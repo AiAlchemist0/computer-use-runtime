@@ -8,6 +8,16 @@ export const App = () => {
   const [owner, setOwner] = useState("none");
   const [memberId, setMemberId] = useState("12345");
   const [frame, setFrame] = useState("");
+  const [mode, setMode] = useState("local-live");
+
+  useEffect(() => {
+    fetch("/api/health")
+      .then((r) => r.json())
+      .then((j: { mode?: string }) => {
+        if (j.mode) setMode(j.mode);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const post = async (url: string, body?: unknown) => {
     const r = await fetch(url, {
@@ -35,6 +45,7 @@ export const App = () => {
         The model discovers. The artifact is the contract. Replay has no model in the loop.
       </p>
       <p>
+        <span className="pill">mode {mode}</span>
         <span className="pill">owner {owner}</span>
         <span className="pill">session {sessionId ?? "—"}</span>
       </p>

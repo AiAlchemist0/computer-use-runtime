@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Capability, CapabilityStep, LocatorChain, Parameter } from "@cur/schema";
-import { deriveChain, WebAdapter } from "./web-adapter.js";
+import { deriveChain, deriveChainFromRef, parseAriaRefs, WebAdapter } from "./web-adapter.js";
 import { PolicyGuard, PolicyDenied } from "./policy.js";
 import type { DiscoverLlm } from "./llm.js";
 import type { Session } from "./session.js";
@@ -86,14 +86,30 @@ export const discover = async (input: DiscoverInput): Promise<DiscoverOutput> =>
     const rawValue = paramRef ? input.values[paramRef] : call.arguments.value != null ? String(call.arguments.value) : undefined;
 
     const page = input.adapter.pageOrThrow();
-    const chain: LocatorChain | undefined =
-      call.arguments.role || call.arguments.name
-        ? await deriveChain(page, action, {
-            role: call.arguments.role ? String(call.arguments.role) : undefined,
-            name: call.arguments.name ? String(call.arguments.name) : undefined,
-            label: call.arguments.label ? String(call.arguments.label) : undefined,
-          })
-        : undefined;
+    const refs = parseAriaRefs(obs.aria);
+    if (!call.arguments.ref && (call.arguments.role || call.arguments.name)) {
+      const hit = refs.find(
+        (r) =>
+          (!call.arguments.name || r.name === String(call.arguments.name)) &&
+          (!call.arguments.role || r.role === String(call.arguments.role) || (call.arguments.role === "textbox" && r.role === "textbox")),
+      );
+      if (hit) call.arguments.ref = hit.ref;
+    }
+    const hint = {
+      role: call.arguments.role ? String(call.arguments.role) : undefined,
+      name: call.arguments.name ? String(call.arguments.name) : undefined,
+      label: call.arguments.label ? String(call.arguments.label) : undefined,
+    };
+    let chain: LocatorChain | undefined;
+    if (call.arguments.ref) {
+      try {
+        chain = await deriveChainFromRef(page, String(call.arguments.ref));
+      } catch {
+        chain = hint.role || hint.name ? await deriveChain(page, action, hint) : undefined;
+      }
+    } else if (hint.role || hint.name) {
+      chain = await deriveChain(page, action, hint);
+    }
 
     const sig = `${action}:${chain?.candidates[0]?.name ?? ""}`;
     if (sig === lastAction) stagnant += 1;

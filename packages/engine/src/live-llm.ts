@@ -18,24 +18,31 @@ export const createLiveLlm = async (): Promise<DiscoverLlm> => {
 
   const tools = {
     type: tool({
-      description: "Type into a control identified by role and accessible name. Prefer paramRef for declared parameters.",
+      description: "Type into a control. Prefer aria snapshot ref=eN. Use paramRef for declared PII params, never raw values.",
       inputSchema: z.object({
-        role: z.string(),
-        name: z.string(),
+        ref: z.string().optional(),
+        role: z.string().optional(),
+        name: z.string().optional(),
         paramRef: z.string().optional(),
         value: z.string().optional(),
         why: z.string(),
       }),
     }),
     click: tool({
-      description: "Click a control identified by role and accessible name.",
-      inputSchema: z.object({ role: z.string(), name: z.string(), why: z.string() }),
+      description: "Click a control. Prefer aria snapshot ref=eN, else role + accessible name.",
+      inputSchema: z.object({
+        ref: z.string().optional(),
+        role: z.string().optional(),
+        name: z.string().optional(),
+        why: z.string(),
+      }),
     }),
     extract: tool({
-      description: "Read text from a control into a named output.",
+      description: "Read text from a control into a named output. Prefer aria snapshot ref=eN.",
       inputSchema: z.object({
-        role: z.string(),
-        name: z.string(),
+        ref: z.string().optional(),
+        role: z.string().optional(),
+        name: z.string().optional(),
         outputName: z.string(),
         why: z.string(),
       }),
@@ -57,6 +64,7 @@ export const createLiveLlm = async (): Promise<DiscoverLlm> => {
         tools,
         prompt: [
           `Goal: ${goal}`,
+          `The page is an accessibility YAML snapshot. Act on [ref=eN] handles when present.`,
           `Declared params should be referenced via paramRef, never raw values if they are PII.`,
           `History:\n${history.join("\n")}`,
           `Current page:\n${observation}`,
@@ -90,6 +98,13 @@ const loadModel = async (provider: string, modelId: string) => {
     case "xai": {
       const { createXai } = await import("@ai-sdk/xai");
       return createXai()(modelId || "grok-3-mini");
+    }
+    case "venice": {
+      const { createOpenAI } = await import("@ai-sdk/openai");
+      return createOpenAI({
+        baseURL: process.env.VENICE_BASE_URL || "https://api.venice.ai/api/v1",
+        apiKey: process.env.VENICE_API_KEY,
+      })(modelId || "llama-3.3-70b");
     }
     case "openrouter": {
       const { createOpenAI } = await import("@ai-sdk/openai");

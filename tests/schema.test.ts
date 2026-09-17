@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { Capability, RunResult, TenantBinding } from "@cur/schema";
-import { seedLookupBalance } from "@cur/engine";
+import { parseAriaRefs, seedLookupBalance } from "@cur/engine";
 
 describe("schema", () => {
   it("round-trips the seeded capability", () => {
@@ -22,6 +22,14 @@ describe("schema", () => {
       locatorOverrides: {},
     });
     expect(t.tenantId).toBe("cu-1");
+  });
+
+  it("parses aria snapshot refs for the compiler", () => {
+    const refs = parseAriaRefs(`- textbox "Member ID" [ref=e3]\n- button "Look up" [ref=e5]`);
+    expect(refs).toEqual([
+      { role: "textbox", name: "Member ID", ref: "e3" },
+      { role: "button", name: "Look up", ref: "e5" },
+    ]);
   });
 
   it("matches committed JSON Schema files", () => {

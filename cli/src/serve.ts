@@ -31,7 +31,9 @@ export const startServe = async (port: number) => {
   const bankUrl = `http://127.0.0.1:${bankPort}/`;
   const app = new Hono();
 
-  app.get("/api/health", (c) => c.json({ ok: true, bank: bankUrl, demoEnabled: process.env.DEMO_ENABLED !== "false" }));
+  app.get("/api/health", (c) =>
+    c.json({ ok: true, bank: bankUrl, demoEnabled: process.env.DEMO_ENABLED !== "false", mode: "local-live" }),
+  );
 
   app.get("/api/capability", (c) => {
     return c.json(seedLookupBalance(bankPort));

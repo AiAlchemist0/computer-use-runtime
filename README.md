@@ -64,7 +64,7 @@ export OPENAI_API_KEY=...
 pnpm discover -- --goal "..." --target http://127.0.0.1:4177/ --param memberId=12345 --llm openai
 ```
 
-`LLM_PROVIDER` can be `openai`, `anthropic`, `google`, `xai`, or `openrouter`.
+`LLM_PROVIDER` can be `openai`, `anthropic`, `google`, `xai`, `openrouter`, or `venice`.
 
 ## Layout
 
@@ -80,8 +80,7 @@ pnpm discover -- --goal "..." --target http://127.0.0.1:4177/ --param memberId=1
 
 ## Hosted demo (extra)
 
-- Console: [https://interface.deanshev.com](https://interface.deanshev.com) (recorded-fallback replay)
-- Workers.dev: [https://computer-use-runtime.dofusd.workers.dev](https://computer-use-runtime.dofusd.workers.dev)
 - Briefing: [https://deanshev.com/interface](https://deanshev.com/interface)
+- Recorded replay: [https://interface.deanshev.com](https://interface.deanshev.com)
 
-The graded artifact is this repository.
+The hosted console is **recorded-fallback**. It prints the result contract for the seeded capability. It does not drive a live browser. Clone this repo for discover, replay, and HITL. The graded artifact is this repository.

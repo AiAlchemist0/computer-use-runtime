@@ -3,29 +3,36 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Capability runtime</title>
+  <title>Capability runtime — recorded replay</title>
   <style>
     body { font-family: Georgia, "Times New Roman", serif; margin: 32px; max-width: 760px; color: #1b1b1b; background: #f7f4ee; }
     button, input { font: inherit; padding: 6px 10px; margin-right: 8px; }
     pre { background: #ece7dc; padding: 12px; overflow: auto; min-height: 160px; }
-    .pill { display: inline-block; border: 1px solid #888; padding: 2px 8px; margin-right: 8px; }
+    .pill { display: inline-block; border: 1px solid #888; padding: 2px 8px; margin: 0 8px 8px 0; }
+    .note { background: #f3ead2; border: 1px solid #c9b57a; padding: 12px 14px; }
+    a { color: #1b3a2a; }
   </style>
 </head>
 <body>
   <h1>Capability runtime</h1>
-  <p>Hosted default is replay of the approved <code>lookup_savings_balance</code> capability. Live discovery is rate-limited. The mock bank never leaves localhost.</p>
+  <p class="note">
+    This hosted page is <strong>recorded-fallback replay</strong> of the approved
+    <code>lookup_savings_balance</code> capability. It does not launch Chromium and does not take over a live browser.
+    Clone the repo and run <code>pnpm serve</code> for discover, live replay, and same-session HITL.
+  </p>
   <p>
     <span class="pill">mode recorded-fallback</span>
     <a href="https://github.com/AiAlchemist0/computer-use-runtime">repo</a>
     · <a href="https://github.com/AiAlchemist0/computer-use-runtime/blob/main/REPORT.md">REPORT.md</a>
+    · <a href="https://github.com/AiAlchemist0/computer-use-runtime/tree/main/evidence">/evidence</a>
   </p>
   <p>
     <input id="member" value="12345" aria-label="Member ID" />
-    <button id="replay">Replay</button>
+    <button id="replay">Replay 12345</button>
     <button id="missing">Replay not-found</button>
     <button id="denied">Replay permission</button>
   </p>
-  <pre id="out">Ready.</pre>
+  <pre id="out">Ready. Default path is replay of the seeded approved capability.</pre>
   <script>
     const out = document.getElementById("out");
     const member = document.getElementById("member");

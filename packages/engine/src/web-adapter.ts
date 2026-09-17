@@ -66,7 +66,7 @@ export class WebAdapter implements SurfaceAdapter {
   async observe(opts?: { screenshot?: boolean }): Promise<ObserveResult> {
     const page = this.pageOrThrow();
     this.opts.policy.assertNavigate(page.url());
-    const aria = await page.locator("body").ariaSnapshot({ timeout: 5000 }).catch(async () => page.innerText("body"));
+    const aria = await snapshotForAi(page);
     const shot = opts?.screenshot ? await page.screenshot({ type: "png" }) : undefined;
     return { url: page.url(), title: await page.title(), aria, screenshotPng: shot };
   }
@@ -123,8 +123,16 @@ export class WebAdapter implements SurfaceAdapter {
     return { text };
   }
 
-  async screenshot(): Promise<Buffer> {
-    return this.pageOrThrow().screenshot({ type: "jpeg", quality: 55 });
+  async screenshot(opts?: { mask?: LocatorChain[] }): Promise<Buffer> {
+    const page = this.pageOrThrow();
+    const mask = (opts?.mask ?? []).map((chain) => this.locatorFromChain(chain));
+    return page.screenshot({
+      type: "jpeg",
+      quality: 55,
+      mask: mask.length ? mask : undefined,
+      timeout: 8000,
+      animations: "disabled",
+    });
   }
 
   async waitFor(kind: "url" | "element" | "text" | "load", value?: string, timeoutMs = 8000): Promise<void> {
@@ -181,11 +189,18 @@ export class WebAdapter implements SurfaceAdapter {
         const raw = document.elementFromPoint(x, y) as HTMLElement | null;
         if (!raw) return null;
         const el =
-          (raw.closest("button, a, input, label, [role], h1, h2") as HTMLElement | null) ?? raw;
-        return {
-          role: el.getAttribute("role") ?? el.tagName.toLowerCase(),
-          name: (el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 80),
-        };
+          (raw.closest("button, a, input, label, [role='button'], [role='textbox'], h1, h2") as HTMLElement | null) ??
+          raw;
+        if (el.tagName === "HTML" || el.tagName === "BODY" || el.tagName === "STYLE" || el.tagName === "HEAD") {
+          return null;
+        }
+        const role =
+          el.getAttribute("role") ||
+          (el.tagName === "BUTTON" ? "button" : el.tagName === "INPUT" || el.tagName === "TEXTAREA" ? "textbox" : el.tagName.toLowerCase());
+        const name = (el.getAttribute("aria-label") || el.getAttribute("name") || el.textContent || "")
+          .trim()
+          .slice(0, 80);
+        return { role, name };
       },
       { x, y },
     );
@@ -291,6 +306,45 @@ export class WebAdapter implements SurfaceAdapter {
     };
   }
 }
+
+export const snapshotForAi = async (page: Page): Promise<string> => {
+  const loc = page.locator("body");
+  const snap = loc.ariaSnapshot as (opts?: Record<string, unknown>) => Promise<string>;
+  const attempts: Array<Record<string, unknown>> = [{ timeout: 5000, mode: "ai" }, { timeout: 5000, ref: true }, { timeout: 5000 }];
+  for (const opts of attempts) {
+    try {
+      return await snap.call(loc, opts);
+    } catch {
+      /* try the next option set */
+    }
+  }
+  return page.innerText("body");
+};
+
+export const parseAriaRefs = (aria: string): Array<{ role: string; name: string; ref: string }> => {
+  const out: Array<{ role: string; name: string; ref: string }> = [];
+  const re = /([a-z][\w-]*)\s+"([^"]+)"\s+\[ref=([eE]\d+[a-z0-9]*)\]/g;
+  for (const m of aria.matchAll(re)) {
+    out.push({ role: m[1]!, name: m[2]!, ref: m[3]! });
+  }
+  return out;
+};
+
+export const deriveChainFromRef = async (page: Page, ref: string): Promise<LocatorChain> => {
+  const loc = page.locator(`aria-ref=${ref}`);
+  const count = await loc.count();
+  const role = (await loc.getAttribute("role").catch(() => null)) ?? undefined;
+  const name =
+    (await loc.getAttribute("aria-label").catch(() => null)) ??
+    (await loc.innerText().catch(() => "")).trim().slice(0, 80);
+  const inferredRole = role ?? ((await loc.evaluate((el) => el.tagName.toLowerCase()).catch(() => "generic")) || "generic");
+  const mapped = inferredRole === "input" || inferredRole === "textarea" ? "textbox" : inferredRole === "button" ? "button" : inferredRole;
+  return {
+    candidates: [{ strategy: "role_name", role: mapped, name, weak: false }],
+    fingerprint: { role: mapped, name, candidateCount: count || 1, framePath: [] },
+    framePath: [],
+  };
+};
 
 export const deriveChain = async (
   page: Page,

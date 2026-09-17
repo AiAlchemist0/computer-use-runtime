@@ -1,21 +1,21 @@
 {
   "schemaVersion": "1.0.0",
-  "runId": "40d544f3-9bea-47b0-83c3-cf00bf189a22",
+  "runId": "c2708fdd-a755-4f29-9583-7bb8ae36bec4",
   "capabilityId": "lookup-savings-balance",
   "status": "escalated",
   "events": [
     {
-      "at": "2026-09-17T23:28:10.283Z",
+      "at": "2026-09-17T23:44:58.186Z",
       "kind": "escalation_requested",
       "why": "operator takeover requested"
     },
     {
-      "at": "2026-09-17T23:28:10.283Z",
+      "at": "2026-09-17T23:44:58.244Z",
       "kind": "human_action",
       "why": "click forwarded as nx,ny plus viewport",
       "detail": {
-        "nx": 0.42,
-        "ny": 0.38,
+        "nx": 0.2426278409090909,
+        "ny": 0.27760416666666665,
         "viewport": {
           "width": 1100,
           "height": 720
@@ -24,14 +24,14 @@
           "candidates": [
             {
               "strategy": "role_name",
-              "role": "html",
-              "name": "Member lookup\n  \n    body { font-family: \"Times New Roman\", serif; background: #",
+              "role": "button",
+              "name": "Look up",
               "weak": false
             }
           ],
           "fingerprint": {
-            "role": "html",
-            "name": "Member lookup\n  \n    body { font-family: \"Times New Roman\", serif; background: #",
+            "role": "button",
+            "name": "Look up",
             "candidateCount": 1,
             "framePath": []
           },
@@ -40,7 +40,7 @@
       }
     },
     {
-      "at": "2026-09-17T23:28:10.283Z",
+      "at": "2026-09-17T23:45:06.256Z",
       "kind": "human_resume",
       "why": "operator returned control"
     }

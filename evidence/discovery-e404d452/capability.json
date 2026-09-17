@@ -7,10 +7,10 @@
   "status": "approved",
   "appProfile": "mock-core-v1",
   "provenance": {
-    "discoveryRunId": "2d5dfe52-6451-4773-af01-f5193463a097",
-    "modelId": "fake",
-    "createdAt": "2026-09-17T23:28:08.861Z",
-    "sourceHash": "6a81bbd527a69b3c"
+    "discoveryRunId": "e404d452-fb8b-4c90-8e79-874f613f94b7",
+    "modelId": "venice:llama-3.3-70b",
+    "createdAt": "2026-09-17T23:44:56.942Z",
+    "sourceHash": "3fa451020963c6be"
   },
   "riskClass": "reversible",
   "policy": {
@@ -76,70 +76,100 @@
         "framePath": []
       },
       "input": {
-        "kind": "paramRef",
-        "param": "memberId"
+        "kind": "value",
+        "value": "paramRef: member_id"
       },
       "waitFor": {
         "kind": "load",
         "timeoutMs": 8000
       },
       "riskClass": "reversible",
-      "why": "Enter the member identifier into the lookup field"
+      "why": "enter the member ID to look up the member"
     },
     {
       "id": "s2",
-      "action": "click",
+      "action": "type",
       "target": {
         "candidates": [
           {
             "strategy": "role_name",
-            "role": "button",
-            "name": "Look up",
+            "role": "textbox",
+            "name": "Member ID",
             "weak": false
           }
         ],
         "fingerprint": {
-          "role": "button",
-          "name": "Look up",
+          "role": "textbox",
+          "name": "Member ID",
           "candidateCount": 1,
           "framePath": []
         },
         "framePath": []
+      },
+      "input": {
+        "kind": "paramRef",
+        "param": "member_id"
       },
       "waitFor": {
         "kind": "load",
         "timeoutMs": 8000
       },
       "riskClass": "reversible",
-      "why": "Submit the member search"
+      "why": "enter the member ID to look up the member"
     },
     {
       "id": "s3",
-      "action": "extract",
+      "action": "type",
       "target": {
         "candidates": [
           {
             "strategy": "role_name",
-            "role": "status",
-            "name": "Savings balance",
+            "role": "textbox",
+            "name": "Member ID",
             "weak": false
           }
         ],
         "fingerprint": {
-          "role": "status",
-          "name": "Savings balance",
+          "role": "textbox",
+          "name": "Member ID",
           "candidateCount": 1,
           "framePath": []
         },
         "framePath": []
       },
-      "outputName": "savingsBalance",
       "waitFor": {
         "kind": "load",
         "timeoutMs": 8000
       },
       "riskClass": "reversible",
-      "why": "Read the current savings balance from the member record"
+      "why": "enter the member ID to look up the member"
+    },
+    {
+      "id": "s4",
+      "action": "type",
+      "target": {
+        "candidates": [
+          {
+            "strategy": "role_name",
+            "role": "textbox",
+            "name": "Member ID",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "role": "textbox",
+          "name": "Member ID",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "waitFor": {
+        "kind": "load",
+        "timeoutMs": 8000
+      },
+      "riskClass": "reversible",
+      "why": "enter the member ID to look up the member"
     }
   ],
   "outcomeDetectors": [

@@ -33,8 +33,8 @@ export const searchPage = (error?: string) => `
   <form method="post" action="/lookup">
     <table class="grid">
       <tr>
-        <td><label for="member">Member ID</label></td>
-        <td><input id="member" name="memberId" aria-label="Member ID" /></td>
+        <td><label>Member ID</label></td>
+        <td><input name="memberId" aria-label="Member ID" /></td>
       </tr>
     </table>
     <p><button type="submit">Look up</button></p>
