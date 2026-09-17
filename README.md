@@ -80,7 +80,8 @@ pnpm discover -- --goal "..." --target http://127.0.0.1:4177/ --param memberId=1
 
 ## Hosted demo (extra)
 
-- Console: `https://interface.deanshev.com` (after deploy)
-- Briefing: `https://deanshev.com/interface`
+- Console: [https://interface.deanshev.com](https://interface.deanshev.com) (recorded-fallback replay)
+- Workers.dev: [https://computer-use-runtime.dofusd.workers.dev](https://computer-use-runtime.dofusd.workers.dev)
+- Briefing: [https://deanshev.com/interface](https://deanshev.com/interface)
 
 The graded artifact is this repository.

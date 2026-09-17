@@ -16,5 +16,8 @@
     "DEMO_ENABLED": "true",
     "DAILY_SESSION_BUDGET": "40"
   },
-  "workers_dev": true
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "interface.deanshev.com", "custom_domain": true }
+  ]
 }
