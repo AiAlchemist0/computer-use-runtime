@@ -1,0 +1,23 @@
+{
+  "name": "@cur/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "cur": "./src/main.ts"
+  },
+  "scripts": {
+    "discover": "tsx src/main.ts discover",
+    "replay": "tsx src/main.ts replay",
+    "serve": "tsx src/main.ts serve"
+  },
+  "dependencies": {
+    "@cur/bank": "workspace:*",
+    "@cur/engine": "workspace:*",
+    "@cur/schema": "workspace:*",
+    "@hono/node-server": "^1.19.0",
+    "hono": "^4.9.6"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.5"
+  }
+}

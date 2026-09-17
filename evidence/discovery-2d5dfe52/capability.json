@@ -1,0 +1,225 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "lookup-savings-balance",
+  "name": "lookup_savings_balance",
+  "description": "look up the member and read their current savings balance",
+  "revision": 1,
+  "status": "approved",
+  "appProfile": "mock-core-v1",
+  "provenance": {
+    "discoveryRunId": "2d5dfe52-6451-4773-af01-f5193463a097",
+    "modelId": "fake",
+    "createdAt": "2026-09-17T23:28:08.861Z",
+    "sourceHash": "6a81bbd527a69b3c"
+  },
+  "riskClass": "reversible",
+  "policy": {
+    "allowHosts": [
+      "127.0.0.1",
+      "localhost"
+    ],
+    "allowRoutes": [
+      "/"
+    ],
+    "allowActions": [
+      "navigate",
+      "click",
+      "type",
+      "select",
+      "press",
+      "extract",
+      "wait",
+      "assert",
+      "dismiss"
+    ]
+  },
+  "parameters": [
+    {
+      "name": "memberId",
+      "type": "string",
+      "required": true,
+      "sensitivity": "pii",
+      "description": "id"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "savingsBalance",
+      "type": "string",
+      "sensitivity": "none",
+      "description": "Current savings balance"
+    }
+  ],
+  "entry": {
+    "kind": "text",
+    "value": "Member lookup"
+  },
+  "steps": [
+    {
+      "id": "s1",
+      "action": "type",
+      "target": {
+        "candidates": [
+          {
+            "strategy": "role_name",
+            "role": "textbox",
+            "name": "Member ID",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "role": "textbox",
+          "name": "Member ID",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "input": {
+        "kind": "paramRef",
+        "param": "memberId"
+      },
+      "waitFor": {
+        "kind": "load",
+        "timeoutMs": 8000
+      },
+      "riskClass": "reversible",
+      "why": "Enter the member identifier into the lookup field"
+    },
+    {
+      "id": "s2",
+      "action": "click",
+      "target": {
+        "candidates": [
+          {
+            "strategy": "role_name",
+            "role": "button",
+            "name": "Look up",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "role": "button",
+          "name": "Look up",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "waitFor": {
+        "kind": "load",
+        "timeoutMs": 8000
+      },
+      "riskClass": "reversible",
+      "why": "Submit the member search"
+    },
+    {
+      "id": "s3",
+      "action": "extract",
+      "target": {
+        "candidates": [
+          {
+            "strategy": "role_name",
+            "role": "status",
+            "name": "Savings balance",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "role": "status",
+          "name": "Savings balance",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "outputName": "savingsBalance",
+      "waitFor": {
+        "kind": "load",
+        "timeoutMs": 8000
+      },
+      "riskClass": "reversible",
+      "why": "Read the current savings balance from the member record"
+    }
+  ],
+  "outcomeDetectors": [
+    {
+      "afterStep": 1,
+      "locator": {
+        "candidates": [
+          {
+            "strategy": "text",
+            "text": "No such member",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "name": "No such member",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "pattern": "No such member",
+      "outcome": "MEMBER_NOT_FOUND"
+    },
+    {
+      "afterStep": 1,
+      "locator": {
+        "candidates": [
+          {
+            "strategy": "text",
+            "text": "Permission denied",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "name": "Permission denied",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "pattern": "Permission denied",
+      "outcome": "PERMISSION_DENIED"
+    },
+    {
+      "afterStep": 1,
+      "locator": {
+        "candidates": [
+          {
+            "strategy": "text",
+            "text": "Member ID must be",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "name": "Member ID must be",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "pattern": "Member ID must be",
+      "outcome": "VALIDATION_FAILED"
+    }
+  ],
+  "success": {
+    "kind": "text",
+    "value": "Savings balance"
+  },
+  "knownOutcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member exists for the supplied ID"
+    },
+    {
+      "code": "PERMISSION_DENIED",
+      "description": "Operator is not allowed to view this record"
+    },
+    {
+      "code": "VALIDATION_FAILED",
+      "description": "Member ID failed field validation"
+    }
+  ]
+}

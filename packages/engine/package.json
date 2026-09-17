@@ -1,0 +1,13 @@
+{
+  "name": "@cur/engine",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@cur/schema": "workspace:*",
+    "playwright": "^1.55.0",
+    "zod": "^4.1.5"
+  }
+}

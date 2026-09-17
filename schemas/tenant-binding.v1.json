@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "tenantId": {
+      "type": "string"
+    },
+    "appProfile": {
+      "type": "string"
+    },
+    "baseUrl": {
+      "type": "string"
+    },
+    "locatorOverrides": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "candidates": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "strategy": {
+                  "type": "string",
+                  "enum": [
+                    "role_name",
+                    "label",
+                    "text",
+                    "nth_role",
+                    "css"
+                  ]
+                },
+                "role": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "nth": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "css": {
+                  "type": "string"
+                },
+                "weak": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "strategy",
+                "weak"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "fingerprint": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "nearbyText": {
+                "type": "string"
+              },
+              "candidateCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "framePath": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "candidateCount",
+              "framePath"
+            ],
+            "additionalProperties": false
+          },
+          "framePath": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "candidates",
+          "fingerprint",
+          "framePath"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tenantId",
+    "appProfile",
+    "baseUrl",
+    "locatorOverrides"
+  ],
+  "additionalProperties": false
+}

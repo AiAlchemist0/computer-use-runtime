@@ -1,0 +1,39 @@
+{
+  "name": "computer-use-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "LLM discovers a UI flow once; deterministic replay invokes it without the model.",
+  "scripts": {
+    "bank": "pnpm --filter @cur/bank start",
+    "discover": "pnpm --filter @cur/cli discover",
+    "replay": "pnpm --filter @cur/cli replay",
+    "serve": "pnpm --filter @cur/cli serve",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "schemas": "tsx packages/schema/src/generate.ts",
+    "evidence": "tsx scripts/write-evidence.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@cur/bank": "workspace:*",
+    "@cur/engine": "workspace:*",
+    "@cur/schema": "workspace:*",
+    "@hono/node-server": "^1.19.0",
+    "ai": "^5.0.29",
+    "@ai-sdk/anthropic": "^2.0.10",
+    "@ai-sdk/google": "^2.0.10",
+    "@ai-sdk/openai": "^2.0.23",
+    "@ai-sdk/xai": "^2.0.10"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.15.0"
+}

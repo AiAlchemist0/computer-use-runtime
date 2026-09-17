@@ -1,0 +1,660 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "approved"
+      ]
+    },
+    "appProfile": {
+      "type": "string"
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "discoveryRunId": {
+          "type": "string"
+        },
+        "modelId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "sourceHash": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "discoveryRunId",
+        "modelId",
+        "createdAt",
+        "sourceHash"
+      ],
+      "additionalProperties": false
+    },
+    "riskClass": {
+      "type": "string",
+      "enum": [
+        "reversible",
+        "irreversible"
+      ]
+    },
+    "policy": {
+      "type": "object",
+      "properties": {
+        "allowHosts": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowRoutes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowActions": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "navigate",
+              "click",
+              "type",
+              "select",
+              "press",
+              "extract",
+              "wait",
+              "assert",
+              "dismiss"
+            ]
+          }
+        }
+      },
+      "required": [
+        "allowHosts",
+        "allowRoutes",
+        "allowActions"
+      ],
+      "additionalProperties": false
+    },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "string",
+              "number",
+              "enum"
+            ]
+          },
+          "required": {
+            "default": true,
+            "type": "boolean"
+          },
+          "sensitivity": {
+            "default": "none",
+            "type": "string",
+            "enum": [
+              "none",
+              "pii",
+              "secret"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "enumValues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "required",
+          "sensitivity",
+          "description"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "string",
+              "number"
+            ]
+          },
+          "sensitivity": {
+            "default": "none",
+            "type": "string",
+            "enum": [
+              "none",
+              "pii",
+              "secret"
+            ]
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "sensitivity",
+          "description"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "entry": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "url",
+            "role_name",
+            "text",
+            "title"
+          ]
+        },
+        "value": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "steps": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "navigate",
+              "click",
+              "type",
+              "select",
+              "press",
+              "extract",
+              "wait",
+              "assert",
+              "dismiss"
+            ]
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "candidates": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "strategy": {
+                      "type": "string",
+                      "enum": [
+                        "role_name",
+                        "label",
+                        "text",
+                        "nth_role",
+                        "css"
+                      ]
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "nth": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "css": {
+                      "type": "string"
+                    },
+                    "weak": {
+                      "default": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "strategy",
+                    "weak"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "fingerprint": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "nearbyText": {
+                    "type": "string"
+                  },
+                  "candidateCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "framePath": {
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "candidateCount",
+                  "framePath"
+                ],
+                "additionalProperties": false
+              },
+              "framePath": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "candidates",
+              "fingerprint",
+              "framePath"
+            ],
+            "additionalProperties": false
+          },
+          "input": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "value"
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "paramRef"
+                  },
+                  "param": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "param"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "outputName": {
+            "type": "string"
+          },
+          "waitFor": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "url",
+                  "element",
+                  "text",
+                  "load"
+                ]
+              },
+              "value": {
+                "type": "string"
+              },
+              "timeoutMs": {
+                "default": 8000,
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "kind",
+              "timeoutMs"
+            ],
+            "additionalProperties": false
+          },
+          "checkpoint": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "url",
+                  "role_name",
+                  "text",
+                  "title"
+                ]
+              },
+              "value": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          "riskClass": {
+            "default": "reversible",
+            "type": "string",
+            "enum": [
+              "reversible",
+              "irreversible"
+            ]
+          },
+          "why": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "riskClass",
+          "why"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "outcomeDetectors": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "afterStep": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "locator": {
+            "type": "object",
+            "properties": {
+              "candidates": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "strategy": {
+                      "type": "string",
+                      "enum": [
+                        "role_name",
+                        "label",
+                        "text",
+                        "nth_role",
+                        "css"
+                      ]
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "nth": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "css": {
+                      "type": "string"
+                    },
+                    "weak": {
+                      "default": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "strategy",
+                    "weak"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "fingerprint": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "nearbyText": {
+                    "type": "string"
+                  },
+                  "candidateCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "framePath": {
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "candidateCount",
+                  "framePath"
+                ],
+                "additionalProperties": false
+              },
+              "framePath": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "candidates",
+              "fingerprint",
+              "framePath"
+            ],
+            "additionalProperties": false
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "MEMBER_NOT_FOUND",
+              "PERMISSION_DENIED",
+              "VALIDATION_FAILED",
+              "SESSION_EXPIRED",
+              "UNEXPECTED_DIALOG"
+            ]
+          }
+        },
+        "required": [
+          "afterStep",
+          "locator",
+          "pattern",
+          "outcome"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "success": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "url",
+            "role_name",
+            "text",
+            "title"
+          ]
+        },
+        "value": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "knownOutcomes": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "MEMBER_NOT_FOUND",
+              "PERMISSION_DENIED",
+              "VALIDATION_FAILED",
+              "SESSION_EXPIRED",
+              "UNEXPECTED_DIALOG"
+            ]
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "description"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "name",
+    "description",
+    "revision",
+    "status",
+    "appProfile",
+    "provenance",
+    "riskClass",
+    "policy",
+    "parameters",
+    "outputs",
+    "entry",
+    "steps",
+    "outcomeDetectors",
+    "success",
+    "knownOutcomes"
+  ],
+  "additionalProperties": false
+}

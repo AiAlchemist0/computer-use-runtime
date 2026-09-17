@@ -1,0 +1,189 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "runId": {
+      "type": "string"
+    },
+    "capabilityId": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "business_outcome",
+        "escalated",
+        "failed"
+      ]
+    },
+    "outputs": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number"
+        ]
+      }
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "MEMBER_NOT_FOUND",
+        "PERMISSION_DENIED",
+        "VALIDATION_FAILED",
+        "SESSION_EXPIRED",
+        "UNEXPECTED_DIALOG"
+      ]
+    },
+    "failure": {
+      "type": "object",
+      "properties": {
+        "stepIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "expected": {
+          "type": "string"
+        },
+        "observed": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string",
+          "enum": [
+            "AMBIGUOUS_TARGET",
+            "TARGET_NOT_FOUND",
+            "CHECKPOINT_FAILED",
+            "TIMEOUT",
+            "UNEXPECTED_STATE",
+            "POLICY_DENIED",
+            "IRREVERSIBLE_GATED"
+          ]
+        },
+        "evidenceRefs": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "stepIndex",
+        "expected",
+        "observed",
+        "code",
+        "evidenceRefs"
+      ],
+      "additionalProperties": false
+    },
+    "events": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "at": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "step_ok",
+              "recovered",
+              "drift_warning",
+              "escalation_requested",
+              "escalation_timed_out",
+              "human_action",
+              "human_resume",
+              "policy_denied"
+            ]
+          },
+          "stepIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "why": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "at",
+          "kind"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "driftWarnings": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "stepIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "expected": {
+            "type": "string"
+          },
+          "observed": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stepIndex",
+          "expected",
+          "observed"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "screenshots": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "trace": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "screenshots"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "runId",
+    "status",
+    "events",
+    "driftWarnings",
+    "evidence"
+  ],
+  "additionalProperties": false
+}

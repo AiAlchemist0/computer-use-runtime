@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "1.0.0",
+  "runId": "40d544f3-9bea-47b0-83c3-cf00bf189a22",
+  "capabilityId": "lookup-savings-balance",
+  "status": "escalated",
+  "events": [
+    {
+      "at": "2026-09-17T23:28:10.283Z",
+      "kind": "escalation_requested",
+      "why": "operator takeover requested"
+    },
+    {
+      "at": "2026-09-17T23:28:10.283Z",
+      "kind": "human_action",
+      "why": "click forwarded as nx,ny plus viewport",
+      "detail": {
+        "nx": 0.42,
+        "ny": 0.38,
+        "viewport": {
+          "width": 1100,
+          "height": 720
+        },
+        "locator": {
+          "candidates": [
+            {
+              "strategy": "role_name",
+              "role": "html",
+              "name": "Member lookup\n  \n    body { font-family: \"Times New Roman\", serif; background: #",
+              "weak": false
+            }
+          ],
+          "fingerprint": {
+            "role": "html",
+            "name": "Member lookup\n  \n    body { font-family: \"Times New Roman\", serif; background: #",
+            "candidateCount": 1,
+            "framePath": []
+          },
+          "framePath": []
+        }
+      }
+    },
+    {
+      "at": "2026-09-17T23:28:10.283Z",
+      "kind": "human_resume",
+      "why": "operator returned control"
+    }
+  ],
+  "driftWarnings": [],
+  "evidence": {
+    "screenshots": [
+      "evidence/hitl-local/screenshots/takeover.jpg"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "action": "type",
+    "why": "Enter the member identifier into the lookup field"
+  },
+  {
+    "action": "click",
+    "why": "Submit the member search"
+  },
+  {
+    "action": "extract",
+    "why": "Read the current savings balance from the member record"
+  },
+  {
+    "action": "finish",
+    "why": "Balance is visible; goal met"
+  }
+]

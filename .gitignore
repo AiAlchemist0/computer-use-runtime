@@ -1,0 +1,14 @@
+node_modules
+dist
+.turbo
+.wrangler
+.playwright
+*.log
+.env
+.env.local
+.DS_Store
+coverage
+apps/console/dist
+apps/worker/dist
+.playwright-cache
+.cache

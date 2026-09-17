@@ -1,0 +1,20 @@
+{
+  "name": "computer-use-runtime",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "SESSION", "class_name": "SessionCoordinator" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionCoordinator"] }],
+  "vars": {
+    "DEMO_ENABLED": "true",
+    "DAILY_SESSION_BUDGET": "40"
+  },
+  "workers_dev": true
+}
