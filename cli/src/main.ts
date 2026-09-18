@@ -83,7 +83,7 @@ const runDiscover = async () => {
       session,
       modelId: `${llmName}:${process.env.LLM_MODEL ?? "fake"}`,
     });
-    const cap = { ...result.capability, status: "approved" as const, id: "lookup-savings-balance" };
+    const cap = { ...result.capability, id: "lookup-savings-balance" };
     const store = new FileStore(evidenceRoot);
     await store.writeCapability(cap.id, cap);
     const dir = `discovery-${cap.provenance.discoveryRunId.slice(0, 8)}`;

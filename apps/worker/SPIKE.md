@@ -7,9 +7,9 @@ Hosted default is **recorded-fallback replay**. The Worker + Durable Object + Tu
 | Check | Result |
 | ----- | ------ |
 | Worker + Assets + SessionCoordinator DO | Implemented. Replay is recorded from `/evidence`. |
-| Turnstile | Verified when `TURNSTILE_SECRET_KEY` is set; skipped locally. |
-| Kill switch | `DEMO_ENABLED=false` stays on recorded replay. |
-| Daily budget | DO counter from `DAILY_SESSION_BUDGET`. |
+| Turnstile | Enforced on `/api/replay` and invoke only when `TURNSTILE_SECRET_KEY` is set. No widget is shipped without a sitekey. |
+| Kill switch | `DEMO_ENABLED=false` refuses `/api/replay` and invoke with 503. |
+| Daily budget | `/api/replay` locks the DO, increments `DAILY_SESSION_BUDGET`, then unlocks. |
 | Cloudflare Container + Chromium | Optional. `Dockerfile` is the spike target. Cold start, WS forwarding, and sleep/wake are **not** the default path. |
 | Supabase catalog | Optional and unused. Filesystem `Store` is the graded persistence. |
 

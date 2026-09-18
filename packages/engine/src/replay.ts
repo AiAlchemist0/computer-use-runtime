@@ -3,7 +3,7 @@ import type { Capability, DriftWarning, RunEvent, RunResult } from "@cur/schema"
 import type { WebAdapter } from "./web-adapter.js";
 import { PolicyDenied, PolicyGuard } from "./policy.js";
 import type { Session } from "./session.js";
-import { mockBankProfile } from "./profiles.js";
+import { mockBankProfile, resolveProfile } from "./profiles.js";
 
 export type ReplayInput = {
   capability: Capability;
@@ -13,6 +13,9 @@ export type ReplayInput = {
   session: Session;
   target: string;
   confirmIrreversible?: boolean;
+  pauseAfterStep?: number;
+  resumeFrom?: number;
+  skipLaunch?: boolean;
 };
 
 export const replay = async (input: ReplayInput): Promise<RunResult> => {
@@ -21,14 +24,23 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
   const driftWarnings: DriftWarning[] = [];
   const outputs: Record<string, string> = {};
   const runId = randomUUID();
+  adapter.bindSession(session);
 
   if (capability.riskClass === "irreversible" || capability.steps.some((s) => s.riskClass === "irreversible")) {
     if (capability.status !== "approved" || !input.confirmIrreversible) {
+      session.setOwner("human");
       return {
         schemaVersion: "1.0.0",
         runId,
         capabilityId: capability.id,
         status: "escalated",
+        failure: {
+          stepIndex: 0,
+          expected: "approved + confirmIrreversible",
+          observed: "irreversible step gated",
+          code: "IRREVERSIBLE_GATED",
+          evidenceRefs: [],
+        },
         events: [
           {
             at: now(),
@@ -42,16 +54,21 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
     }
   }
 
-  await adapter.launch(input.target);
-  policy.assertNavigate(input.target);
-
-  if (!(await adapter.assertCheckpoint(capability.entry))) {
-    return fail(runId, capability.id, 0, "entry checkpoint", "entry screen not visible", "CHECKPOINT_FAILED", events);
+  if (!input.skipLaunch || !adapter.isOpen()) {
+    await adapter.launch(input.target);
+    policy.assertNavigate(input.target);
+    if (!(await adapter.assertCheckpoint(capability.entry))) {
+      return fail(runId, capability.id, 0, "entry checkpoint", "entry screen not visible", "CHECKPOINT_FAILED", events);
+    }
+  } else {
+    policy.assertNavigate(await adapter.url());
   }
 
-  const profile = mockBankProfile();
+  const profile = resolveProfile(capability.appProfile) ?? mockBankProfile();
+  const start = input.resumeFrom ?? 0;
+  const dismissed = new Set<string>();
 
-  for (let i = 0; i < capability.steps.length; i++) {
+  for (let i = start; i < capability.steps.length; i++) {
     session.assertAgent();
     const step = capability.steps[i]!;
     try {
@@ -59,34 +76,22 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
       if (step.action === "navigate" && step.input?.kind === "value") policy.assertNavigate(step.input.value);
 
       for (const rule of profile.interstitials) {
+        if (dismissed.has(rule.id)) continue;
         const found = await adapter.resolve(rule.detect);
         if (found.count === 1 && rule.dismiss.target) {
           await adapter.act({ action: "dismiss", target: rule.dismiss.target });
+          dismissed.add(rule.id);
           events.push({ at: now(), kind: "recovered", stepIndex: i, why: `dismissed ${rule.id}` });
         }
       }
 
-      if (await adapter.assertCheckpoint({ kind: "text", value: "The core is not responding" })) {
-        return fail(runId, capability.id, i, "lookup response", "The core is not responding", "TIMEOUT", events, driftWarnings);
+      const timeoutPattern = profile.errorPatterns.find((p) => p.code === "TIMEOUT")?.pattern ?? "The core is not responding";
+      if (await adapter.assertCheckpoint({ kind: "text", value: timeoutPattern })) {
+        return fail(runId, capability.id, i, "lookup response", timeoutPattern, "TIMEOUT", events, driftWarnings);
       }
 
-      if (await adapter.assertCheckpoint({ kind: "text", value: "Session expired" })) {
-        return {
-          schemaVersion: "1.0.0",
-          runId,
-          capabilityId: capability.id,
-          status: "failed",
-          failure: {
-            stepIndex: i,
-            expected: "active session",
-            observed: "Session expired",
-            code: "UNEXPECTED_STATE",
-            evidenceRefs: [],
-          },
-          events,
-          driftWarnings,
-          evidence: { screenshots: [] },
-        };
+      if (profile.sessionExpired && (await adapter.assertCheckpoint(profile.sessionExpired))) {
+        return fail(runId, capability.id, i, "active session", profile.sessionExpired.value, "UNEXPECTED_STATE", events, driftWarnings);
       }
 
       const value =
@@ -109,11 +114,20 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
       }
 
       const started = Date.now();
-      if (step.action === "extract" && step.target && step.outputName) {
-        const extracted = await adapter.extract(step.target);
-        outputs[step.outputName] = extracted.text;
-      } else {
-        await adapter.act({ action: step.action, target: step.target, value });
+      try {
+        if (step.action === "extract" && step.target && step.outputName) {
+          const extracted = await adapter.extract(step.target);
+          outputs[step.outputName] = extracted.text;
+        } else {
+          await adapter.act({ action: step.action, target: step.target, value });
+        }
+      } catch (err) {
+        const code = (err as { code?: string }).code;
+        if (code === "TARGET_NOT_FOUND" && step.action === "click" && i < capability.steps.length - 1) {
+          events.push({ at: now(), kind: "recovered", stepIndex: i, why: "click already satisfied by human" });
+        } else {
+          throw err;
+        }
       }
 
       if (step.waitFor) {
@@ -144,6 +158,19 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
       }
 
       events.push({ at: now(), kind: "step_ok", stepIndex: i, why: step.why });
+      if (input.pauseAfterStep === i) {
+        session.setOwner("human");
+        events.push({ at: now(), kind: "escalation_requested", why: "pauseAfterStep — operator takeover" });
+        return {
+          schemaVersion: "1.0.0",
+          runId,
+          capabilityId: capability.id,
+          status: "escalated",
+          events,
+          driftWarnings,
+          evidence: { screenshots: [] },
+        };
+      }
     } catch (err) {
       if (err instanceof PolicyDenied) {
         return fail(runId, capability.id, i, "policy allow", err.reason, "POLICY_DENIED", events, driftWarnings);

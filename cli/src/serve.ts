@@ -21,13 +21,15 @@ type Live = {
   adapter: WebAdapter;
   lastJpeg?: Buffer;
   intervention?: { why: string; step?: number };
+  memberId?: string;
+  pausedAfter?: number;
 };
 
 const lives = new Map<string, Live>();
 
 export const startServe = async (port: number) => {
   const bankPort = port + 1;
-  serve({ fetch: createBankApp().fetch, hostname: "127.0.0.1", port: bankPort });
+  const bankServer = serve({ fetch: createBankApp().fetch, hostname: "127.0.0.1", port: bankPort });
   const bankUrl = `http://127.0.0.1:${bankPort}/`;
   const app = new Hono();
 
@@ -116,11 +118,33 @@ export const startServe = async (port: number) => {
 
   app.post("/api/session/start", async (c) => {
     const policy = new PolicyGuard(loopbackPolicy(bankPort));
-    const adapter = new WebAdapter({ policy });
     const session = new Session();
+    const adapter = new WebAdapter({ policy, session });
     await adapter.launch(bankUrl);
     lives.set(session.id, { session, adapter });
     return c.json({ sessionId: session.id, controlOwner: session.controlOwner });
+  });
+
+  app.post("/api/session/:id/run", async (c) => {
+    const live = lives.get(c.req.param("id"));
+    if (!live) return c.json({ error: "not found" }, 404);
+    const body = await c.req.json<{ memberId?: string }>().catch(() => ({ memberId: "12345" }));
+    live.memberId = body.memberId ?? "12345";
+    const policy = new PolicyGuard(loopbackPolicy(bankPort));
+    const result = await replay({
+      capability: seedLookupBalance(bankPort),
+      values: { memberId: live.memberId },
+      adapter: live.adapter,
+      policy,
+      session: live.session,
+      target: bankUrl,
+      skipLaunch: true,
+      pauseAfterStep: 0,
+    });
+    live.pausedAfter = 0;
+    live.intervention = { why: "paused after type for operator click", step: 0 };
+    live.lastJpeg = await live.adapter.screenshot();
+    return c.json({ ...result, controlOwner: live.session.controlOwner });
   });
 
   app.post("/api/session/:id/escalate", async (c) => {
@@ -151,7 +175,21 @@ export const startServe = async (port: number) => {
     if (!live) return c.json({ error: "not found" }, 404);
     live.session.setOwner("agent");
     live.intervention = undefined;
-    return c.json({ controlOwner: live.session.controlOwner });
+    const url = await live.adapter.url();
+    const resumeFrom = url.includes("/member") ? 2 : 1;
+    const policy = new PolicyGuard(loopbackPolicy(bankPort));
+    const result = await replay({
+      capability: seedLookupBalance(bankPort),
+      values: { memberId: live.memberId ?? "12345" },
+      adapter: live.adapter,
+      policy,
+      session: live.session,
+      target: bankUrl,
+      skipLaunch: true,
+      resumeFrom,
+    });
+    live.lastJpeg = await live.adapter.screenshot().catch(() => live.lastJpeg);
+    return c.json({ controlOwner: live.session.controlOwner, result });
   });
 
   app.get("/api/session/:id/frame", async (c) => {
@@ -190,10 +228,19 @@ export const startServe = async (port: number) => {
     return c.body(readFileSync(path), 200, { "content-type": types[ext] ?? "application/octet-stream" });
   });
 
-  serve({ fetch: app.fetch, hostname: "127.0.0.1", port }, (info) => {
+  const consoleServer = serve({ fetch: app.fetch, hostname: "127.0.0.1", port }, (info) => {
     console.log(`console http://127.0.0.1:${info.port}`);
     console.log(`bank    ${bankUrl}`);
   });
+  return {
+    bankUrl,
+    close: async () => {
+      await new Promise<void>((done) => bankServer.close(() => done()));
+      await new Promise<void>((done) => consoleServer.close(() => done()));
+      for (const live of lives.values()) await live.adapter.close().catch(() => undefined);
+      lives.clear();
+    },
+  };
 };
 
 const fallbackHtml = (bank: string) => `<!doctype html>
@@ -210,6 +257,7 @@ const fallbackHtml = (bank: string) => `<!doctype html>
   <p><button id="replay">Replay member 12345</button>
      <button id="missing">Replay missing member</button>
      <button id="start">Start live session</button>
+     <button id="handoff">Replay until handoff</button>
      <button id="take">Take over</button>
      <button id="resume">Resume agent</button></p>
   <img id="frame" alt="Live session frame"/>
@@ -232,6 +280,15 @@ document.getElementById('start').onclick = async () => {
   sessionId = j.sessionId;
   out.textContent = JSON.stringify(j, null, 2);
   poll();
+};
+document.getElementById('handoff').onclick = async () => {
+  if (!sessionId) {
+    const started = await (await fetch('/api/session/start', { method: 'POST' })).json();
+    sessionId = started.sessionId;
+    poll();
+  }
+  const r = await fetch('/api/session/' + sessionId + '/run', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ memberId: '12345' }) });
+  out.textContent = JSON.stringify(await r.json(), null, 2);
 };
 document.getElementById('take').onclick = async () => {
   const r = await fetch('/api/session/' + sessionId + '/escalate', { method: 'POST' });

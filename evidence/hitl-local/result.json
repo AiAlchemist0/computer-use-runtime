@@ -1,16 +1,25 @@
 {
   "schemaVersion": "1.0.0",
-  "runId": "c2708fdd-a755-4f29-9583-7bb8ae36bec4",
+  "runId": "3f5d1d5f-4162-4251-86f5-5395971489a6",
   "capabilityId": "lookup-savings-balance",
-  "status": "escalated",
+  "status": "success",
+  "outputs": {
+    "savingsBalance": "$1,842.17"
+  },
   "events": [
     {
-      "at": "2026-09-17T23:44:58.186Z",
-      "kind": "escalation_requested",
-      "why": "operator takeover requested"
+      "at": "2026-09-18T00:01:41.455Z",
+      "kind": "step_ok",
+      "stepIndex": 0,
+      "why": "Enter the member identifier into the lookup field"
     },
     {
-      "at": "2026-09-17T23:44:58.244Z",
+      "at": "2026-09-18T00:01:41.455Z",
+      "kind": "escalation_requested",
+      "why": "pauseAfterStep — operator takeover"
+    },
+    {
+      "at": "2026-09-18T00:01:41.477Z",
       "kind": "human_action",
       "why": "click forwarded as nx,ny plus viewport",
       "detail": {
@@ -40,12 +49,37 @@
       }
     },
     {
-      "at": "2026-09-17T23:45:06.256Z",
-      "kind": "human_resume",
-      "why": "operator returned control"
+      "at": "2026-09-18T00:01:41.528Z",
+      "kind": "drift_warning",
+      "stepIndex": 1,
+      "why": "locator fingerprint changed"
+    },
+    {
+      "at": "2026-09-18T00:01:41.531Z",
+      "kind": "recovered",
+      "stepIndex": 1,
+      "why": "click already satisfied by human"
+    },
+    {
+      "at": "2026-09-18T00:01:41.540Z",
+      "kind": "step_ok",
+      "stepIndex": 1,
+      "why": "Submit the member search"
+    },
+    {
+      "at": "2026-09-18T00:01:41.550Z",
+      "kind": "step_ok",
+      "stepIndex": 2,
+      "why": "Read the current savings balance from the member record"
     }
   ],
-  "driftWarnings": [],
+  "driftWarnings": [
+    {
+      "stepIndex": 1,
+      "expected": "count=1",
+      "observed": "count=0"
+    }
+  ],
   "evidence": {
     "screenshots": [
       "evidence/hitl-local/screenshots/takeover.jpg"

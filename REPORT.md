@@ -6,7 +6,7 @@ One Node/TypeScript engine runs in the CLI, in tests, and (optionally) in a Clou
 
 The mock bank is a localhost-only Hono app. The console never exposes it as a public URL. Cloudflare Worker + Durable Object + Turnstile are a hosted extra, not required to grade the repo. Persistence is a `Store` interface: files under `/evidence/` locally.
 
-We did not use Stagehand or Browserbase. Their `observe() → Action → act(Action)` cache is the same thesis as a product. Ours differs: typed inputs/outputs, first-class business-outcome detectors, a policy snapshot on the artifact, a same-session HITL seam, no vendor-hosted cache, and a Playwright adapter we own. Vendor computer-use toolsets (Anthropic `browser_toolset`, OpenAI CUA) are a possible future `SurfaceAdapter`, not v1. The discover contract is our Zod tools plus `LLM_PROVIDER`.
+We did not use Stagehand or Browserbase. Their `observe() → Action → act(Action)` cache is the same thesis as a product. Ours differs: typed inputs/outputs, first-class business-outcome detectors, a policy snapshot on the artifact, a same-session HITL seam, no vendor-hosted cache, and a Playwright adapter we own. Vendor computer-use toolsets (Anthropic `browser_toolset`, OpenAI CUA) are a possible future `SurfaceAdapter`, not v1. The discover contract is our Zod tools plus `LLM_PROVIDER`. Live-provider runs stay `draft` unless they finish and extract.
 
 Trade-off: Playwright + the accessibility tree over a vendor SDK so the artifact is ours. We own the bank so every exception class is reproducible.
 
@@ -32,11 +32,11 @@ Reuse: one `AppProfile` per vendor product; capabilities reference it; `TenantBi
 
 ## 5. Escalation & handoff
 
-Stuck = unchanged snapshot hash, repeated action, step/time budget, model `escalate`, or an irreversible step without approval. The session sets `controlOwner=human`, agent acts throw, and the console forwards clicks as `{nx,ny}` plus viewport into the **same** Playwright page. Human actions are recorded (coordinates + resolved locator). Resume sets owner back to `agent`. A full co-browse console is out of scope; `pnpm serve` is the thin operator surface.
+Stuck = unchanged snapshot hash, repeated action, step/time budget, model `escalate`, or an irreversible step without approval. The session sets `controlOwner=human`, agent acts throw (`WebAdapter.act` checks owner), and the console forwards clicks as `{nx,ny}` plus viewport into the **same** Playwright page. Replay can `pauseAfterStep` / `resumeFrom` on that adapter. Human actions are recorded (coordinates + resolved locator). Resume continues remaining steps. A full co-browse console is out of scope; `pnpm serve` is the thin operator surface.
 
 ## 6. Safety
 
-Allowlist is hosts + routes + action types, checked before navigate, on `framenavigated`, and via `page.route` abort. Irreversible steps (confirm/submit) require `status=approved` and `confirmIrreversible` on replay; otherwise we escalate. Logs and artifacts run through a redactor (declared PII, SSN/account patterns). Screenshots accept Playwright `mask` locators for sensitive fields. Residual limit: pixels can still leak; production would encrypt and short-TTL evidence. The demo target is localhost-only. No Auth product.
+Allowlist is hosts + routes + action types, checked before navigate, on `framenavigated`, and via `page.route` abort. `/` is not a prefix of every path. Irreversible steps (confirm/submit) require `status=approved` and `confirmIrreversible` on replay; otherwise we escalate with `IRREVERSIBLE_GATED`. Logs and artifacts run through a redactor (declared PII, SSN/account patterns). Screenshots accept Playwright `mask` locators for sensitive fields. Residual limit: pixels can still leak; production would encrypt and short-TTL evidence. The demo target is localhost-only. No Auth product.
 
 ## 7. Cuts
 

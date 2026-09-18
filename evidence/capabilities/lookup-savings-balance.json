@@ -2,15 +2,15 @@
   "schemaVersion": "1.0.0",
   "id": "lookup-savings-balance",
   "name": "lookup_savings_balance",
-  "description": "Look up a member and read their current savings balance",
+  "description": "look up the member and read their current savings balance",
   "revision": 1,
   "status": "approved",
   "appProfile": "mock-core-v1",
   "provenance": {
-    "discoveryRunId": "seeded",
-    "modelId": "fake",
-    "createdAt": "2026-09-17T00:00:00.000Z",
-    "sourceHash": "seed"
+    "discoveryRunId": "566f9f39-4c6e-41b5-adbe-01fa21392053",
+    "modelId": "fake+aria-ref",
+    "createdAt": "2026-09-18T00:01:31.122Z",
+    "sourceHash": "6a81bbd527a69b3c"
   },
   "riskClass": "reversible",
   "policy": {
@@ -19,7 +19,9 @@
       "localhost"
     ],
     "allowRoutes": [
-      "/"
+      "/",
+      "/lookup",
+      "/member"
     ],
     "allowActions": [
       "navigate",
@@ -39,7 +41,7 @@
       "type": "string",
       "required": true,
       "sensitivity": "pii",
-      "description": "Credit-union member identifier"
+      "description": "id"
     }
   ],
   "outputs": [
@@ -81,7 +83,7 @@
       },
       "waitFor": {
         "kind": "load",
-        "timeoutMs": 4000
+        "timeoutMs": 8000
       },
       "riskClass": "reversible",
       "why": "Enter the member identifier into the lookup field"
@@ -135,9 +137,8 @@
       },
       "outputName": "savingsBalance",
       "waitFor": {
-        "kind": "text",
-        "value": "Savings balance",
-        "timeoutMs": 4000
+        "kind": "load",
+        "timeoutMs": 8000
       },
       "riskClass": "reversible",
       "why": "Read the current savings balance from the member record"

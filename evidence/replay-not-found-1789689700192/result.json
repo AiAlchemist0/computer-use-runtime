@@ -1,18 +1,18 @@
 {
   "schemaVersion": "1.0.0",
-  "runId": "ba265e52-1bab-49ac-9ef2-475a2eeb9ab0",
+  "runId": "63f3d49c-5a71-4123-83f9-a46911569c17",
   "capabilityId": "lookup-savings-balance",
   "status": "business_outcome",
   "outcome": "MEMBER_NOT_FOUND",
   "events": [
     {
-      "at": "2026-09-17T23:44:57.845Z",
+      "at": "2026-09-18T00:01:40.541Z",
       "kind": "step_ok",
       "stepIndex": 0,
       "why": "Enter the member identifier into the lookup field"
     },
     {
-      "at": "2026-09-17T23:44:57.964Z",
+      "at": "2026-09-18T00:01:40.658Z",
       "kind": "step_ok",
       "stepIndex": 1,
       "why": "Submit the member search"
@@ -21,8 +21,8 @@
   "driftWarnings": [],
   "evidence": {
     "screenshots": [
-      "evidence/replay-not-found-1789688697598/screenshots/final.jpg"
+      "evidence/replay-not-found-1789689700192/screenshots/final.jpg"
     ],
-    "trace": "evidence/replay-not-found-1789688697598/trace.zip"
+    "trace": "evidence/replay-not-found-1789689700192/trace.zip"
   }
 }

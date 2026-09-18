@@ -39,9 +39,6 @@ export const createBankApp = () => {
   });
 
   app.get("/", (c) => {
-    if (c.get("chaos") === "expired") {
-      return c.html(layout("Expired", notice("Session expired. Sign in again.")));
-    }
     if (c.get("chaos") === "dialog") {
       return c.html(layout("Notice", notice("System maintenance window.", true) + searchPage()));
     }

@@ -2,33 +2,33 @@ import { Hono } from "hono";
 
 const seededSuccess = {
   schemaVersion: "1.0.0",
-  runId: "hosted-seed",
+  runId: "evidence-replay-success",
   capabilityId: "lookup-savings-balance",
   status: "success",
   outputs: { savingsBalance: "$1,842.17" },
-  events: [{ at: "2026-09-17T00:00:00.000Z", kind: "step_ok", why: "seeded hosted replay" }],
+  events: [{ at: "2026-09-17T00:00:00.000Z", kind: "step_ok", why: "recorded from evidence/INDEX.md success replay" }],
   driftWarnings: [],
   evidence: { screenshots: [] },
 };
 
 const seededNotFound = {
   schemaVersion: "1.0.0",
-  runId: "hosted-seed-missing",
+  runId: "evidence-replay-not-found",
   capabilityId: "lookup-savings-balance",
   status: "business_outcome",
   outcome: "MEMBER_NOT_FOUND",
-  events: [{ at: "2026-09-17T00:00:00.000Z", kind: "step_ok", why: "seeded hosted not-found" }],
+  events: [{ at: "2026-09-17T00:00:00.000Z", kind: "step_ok", why: "recorded from evidence/INDEX.md MEMBER_NOT_FOUND replay" }],
   driftWarnings: [],
   evidence: { screenshots: [] },
 };
 
 const seededDenied = {
   schemaVersion: "1.0.0",
-  runId: "hosted-seed-denied",
+  runId: "evidence-replay-permission",
   capabilityId: "lookup-savings-balance",
   status: "business_outcome",
   outcome: "PERMISSION_DENIED",
-  events: [{ at: "2026-09-17T00:00:00.000Z", kind: "step_ok", why: "seeded hosted permission" }],
+  events: [{ at: "2026-09-17T00:00:00.000Z", kind: "step_ok", why: "recorded from evidence/INDEX.md PERMISSION_DENIED replay" }],
   driftWarnings: [],
   evidence: { screenshots: [] },
 };
@@ -114,17 +114,37 @@ app.get("/api/capability", (c) =>
   }),
 );
 
+const gatedReplay = async (c: { env: Env; req: { url: string; json: <T>() => Promise<T>; header: (n: string) => string | undefined } }, memberId?: string, token?: string) => {
+  if (c.env.DEMO_ENABLED === "false") {
+    return { status: 503 as const, body: { error: "demo disabled", mode: "kill-switch-recorded" } };
+  }
+  const ok = await verifyTurnstile(token, c.env.TURNSTILE_SECRET_KEY, c.req.header("CF-Connecting-IP") ?? "");
+  if (!ok) return { status: 403 as const, body: { error: "turnstile" } };
+  const id = c.env.SESSION.idFromName("singleton");
+  const stub = c.env.SESSION.get(id);
+  const locked = await stub.fetch(new URL("/lock", c.req.url), { method: "POST" });
+  if (locked.status === 429) {
+    const reason = await locked.json().catch(() => ({ reason: "busy" }));
+    return { status: 429 as const, body: reason };
+  }
+  try {
+    return { status: 200 as const, body: recordedReplay(memberId) };
+  } finally {
+    await stub.fetch(new URL("/unlock", c.req.url), { method: "POST" });
+  }
+};
+
 app.post("/api/replay", async (c) => {
   const body = await c.req.json<{ memberId?: string; turnstileToken?: string }>().catch(() => ({ memberId: "12345" }));
-  const ok = await verifyTurnstile(body.turnstileToken, c.env.TURNSTILE_SECRET_KEY, c.req.header("CF-Connecting-IP") ?? "");
-  if (!ok) return c.json({ error: "turnstile" }, 403);
-  return c.json(recordedReplay(body.memberId));
+  const out = await gatedReplay(c, body.memberId, body.turnstileToken);
+  return c.json(out.body, out.status);
 });
 
 app.post("/capabilities/:id/invoke", async (c) => {
   if (c.req.param("id") !== "lookup-savings-balance") return c.json({ error: "unknown capability" }, 404);
-  const body = await c.req.json<{ memberId?: string }>().catch(() => ({ memberId: "12345" }));
-  return c.json(recordedReplay(body.memberId));
+  const body = await c.req.json<{ memberId?: string; turnstileToken?: string }>().catch(() => ({ memberId: "12345" }));
+  const out = await gatedReplay(c, body.memberId, body.turnstileToken);
+  return c.json(out.body, out.status);
 });
 
 app.post("/api/discover", (c) =>

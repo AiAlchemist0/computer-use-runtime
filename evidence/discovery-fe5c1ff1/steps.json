@@ -1,0 +1,26 @@
+[
+  {
+    "action": "type",
+    "why": "Enter the member ID to look up the member"
+  },
+  {
+    "action": "type",
+    "why": "Enter the member ID to look up the member"
+  },
+  {
+    "action": "click",
+    "why": "Click the submit control after typing the member ID to look up the member"
+  },
+  {
+    "action": "extract",
+    "why": "read the member's current savings balance"
+  },
+  {
+    "action": "extract",
+    "why": "read the member's current savings balance"
+  },
+  {
+    "action": "escalate",
+    "why": "stagnant snapshot; operator takeover"
+  }
+]

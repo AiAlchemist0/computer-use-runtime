@@ -2,9 +2,11 @@ import { type Browser, type BrowserContext, type Locator, type Page, chromium } 
 import type { ActionType, Checkpoint, LocatorCandidate, LocatorChain } from "@cur/schema";
 import { PolicyDenied, PolicyGuard } from "./policy.js";
 import type { ActRequest, ExtractResult, HumanPointer, ObserveResult, SurfaceAdapter } from "./interfaces.js";
+import type { Session } from "./session.js";
 
 export type WebAdapterOptions = {
   policy: PolicyGuard;
+  session?: Session;
   headless?: boolean;
   cdpUrl?: string;
   extraHeaders?: Record<string, string>;
@@ -15,8 +17,19 @@ export class WebAdapter implements SurfaceAdapter {
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private page: Page | null = null;
+  private session: Session | undefined;
 
-  constructor(private readonly opts: WebAdapterOptions) {}
+  constructor(private readonly opts: WebAdapterOptions) {
+    this.session = opts.session;
+  }
+
+  bindSession(session: Session): void {
+    this.session = session;
+  }
+
+  isOpen(): boolean {
+    return this.page != null;
+  }
 
   async launch(startUrl?: string): Promise<void> {
     if (this.opts.cdpUrl) {
@@ -78,6 +91,7 @@ export class WebAdapter implements SurfaceAdapter {
   }
 
   async act(req: ActRequest): Promise<void> {
+    this.session?.assertAgent();
     this.opts.policy.assertAction(req.action);
     this.opts.policy.assertNavigate(this.pageOrThrow().url());
     const page = this.pageOrThrow();
@@ -150,7 +164,11 @@ export class WebAdapter implements SurfaceAdapter {
       return;
     }
     if (kind === "element" && value) {
-      await page.getByRole((value as "button") ?? "button").first().waitFor({ timeout: timeoutMs });
+      const [role, name] = value.includes(":") ? value.split(":") : ["button", value];
+      const loc = name
+        ? page.getByRole((role || "button") as "button", { name })
+        : page.getByRole((role || "button") as "button");
+      await loc.first().waitFor({ timeout: timeoutMs });
     }
   }
 
@@ -250,40 +268,48 @@ export class WebAdapter implements SurfaceAdapter {
   }
 
   locatorFromChain(chain: LocatorChain): Locator {
-    const page = this.pageOrThrow();
-    if (chain.framePath.length) {
-      const fl = page.frameLocator(chain.framePath[0] ?? "iframe");
-      const c = chain.candidates[0]!;
-      if (c.strategy === "role_name" && c.role) return fl.getByRole(c.role as "textbox", { name: c.name });
-      if (c.strategy === "text" && c.text) return fl.getByText(c.text);
-    }
     const c = chain.candidates[0];
     if (!c) throw new Error("empty locator chain");
-    const primary = this.candidateToLocator(page, c);
-    return primary;
+    return this.locatorForCandidate(chain.framePath, c);
   }
 
   async uniqueLocator(chain: LocatorChain): Promise<Locator> {
     const page = this.pageOrThrow();
-    let loc = this.locatorFromChain(chain);
-    let count = await loc.count();
-    if (count === 0) {
+    let lastAmbiguous = false;
+    for (const c of chain.candidates) {
+      const loc = this.locatorForCandidate(chain.framePath, c);
+      const count = await loc.count();
+      if (count === 1) return loc;
+      if (count > 1) lastAmbiguous = true;
+    }
+    if (!chain.framePath.length) {
       for (const frame of page.frames()) {
         if (frame === page.mainFrame()) continue;
-        const c = chain.candidates[0]!;
-        const framed =
-          c.strategy === "role_name" && c.role
-            ? frame.getByRole(c.role as "generic", { name: c.name })
-            : c.text
-              ? frame.getByText(c.text)
-              : null;
-        if (framed && (await framed.count()) === 1) return framed;
+        for (const c of chain.candidates) {
+          const framed =
+            c.strategy === "role_name" && c.role
+              ? frame.getByRole(c.role as "generic", { name: c.name })
+              : c.text
+                ? frame.getByText(c.text)
+                : null;
+          if (framed && (await framed.count()) === 1) return framed;
+        }
       }
     }
-    count = await loc.count();
-    if (count === 0) throw Object.assign(new Error("TARGET_NOT_FOUND"), { code: "TARGET_NOT_FOUND" });
-    if (count > 1) throw Object.assign(new Error("AMBIGUOUS_TARGET"), { code: "AMBIGUOUS_TARGET" });
-    return loc;
+    if (lastAmbiguous) throw Object.assign(new Error("AMBIGUOUS_TARGET"), { code: "AMBIGUOUS_TARGET" });
+    throw Object.assign(new Error("TARGET_NOT_FOUND"), { code: "TARGET_NOT_FOUND" });
+  }
+
+  private locatorForCandidate(framePath: string[], c: LocatorCandidate): Locator {
+    const page = this.pageOrThrow();
+    if (framePath.length) {
+      let fl = page.frameLocator(framePath[0] ?? "iframe");
+      for (const sel of framePath.slice(1)) fl = fl.frameLocator(sel);
+      if (c.strategy === "role_name" && c.role) return fl.getByRole(c.role as "textbox", { name: c.name });
+      if (c.strategy === "text" && c.text) return fl.getByText(c.text);
+      if (c.strategy === "label" && c.text) return fl.getByLabel(c.text);
+    }
+    return this.candidateToLocator(page, c);
   }
 
   private candidateToLocator(page: Page, c: LocatorCandidate): Locator {

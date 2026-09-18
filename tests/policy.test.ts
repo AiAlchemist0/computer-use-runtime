@@ -16,8 +16,18 @@ describe("policy", () => {
     expect(() => guard.assertAction("press")).toThrow(PolicyDenied);
   });
 
-  it("allows loopback lookup", () => {
-    expect(() => guard.assertNavigate("http://127.0.0.1:4177/lookup")).not.toThrow();
+  it("does not treat / as a prefix of every path", () => {
+    expect(() => guard.assertNavigate("http://127.0.0.1:4177/lookup")).toThrow(PolicyDenied);
+  });
+
+  it("allows an explicit lookup route", () => {
+    const open = new PolicyGuard({
+      allowHosts: ["127.0.0.1"],
+      allowRoutes: ["/", "/lookup", "/member"],
+      allowActions: ["navigate"],
+    });
+    expect(() => open.assertNavigate("http://127.0.0.1:4177/lookup")).not.toThrow();
+    expect(() => open.assertNavigate("http://127.0.0.1:4177/member/12345")).not.toThrow();
   });
 
   it("denies a disallowed route", () => {

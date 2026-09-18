@@ -4,13 +4,13 @@
   "name": "lookup_savings_balance",
   "description": "look up the member and read their current savings balance",
   "revision": 1,
-  "status": "approved",
+  "status": "draft",
   "appProfile": "mock-core-v1",
   "provenance": {
-    "discoveryRunId": "68ec8dd2-f3a2-4f1b-8c30-a177de448566",
-    "modelId": "fake+aria-ref",
-    "createdAt": "2026-09-17T23:44:52.425Z",
-    "sourceHash": "6a81bbd527a69b3c"
+    "discoveryRunId": "fe5c1ff1-2118-42bf-bd45-1ce77a73ab31",
+    "modelId": "venice:llama-3.3-70b",
+    "createdAt": "2026-09-18T00:01:39.738Z",
+    "sourceHash": "fc065ef74d17724c"
   },
   "riskClass": "reversible",
   "policy": {
@@ -19,7 +19,9 @@
       "localhost"
     ],
     "allowRoutes": [
-      "/"
+      "/",
+      "/lookup",
+      "/member"
     ],
     "allowActions": [
       "navigate",
@@ -84,10 +86,41 @@
         "timeoutMs": 8000
       },
       "riskClass": "reversible",
-      "why": "Enter the member identifier into the lookup field"
+      "why": "Enter the member ID to look up the member"
     },
     {
       "id": "s2",
+      "action": "type",
+      "target": {
+        "candidates": [
+          {
+            "strategy": "role_name",
+            "role": "textbox",
+            "name": "Member ID",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "role": "textbox",
+          "name": "Member ID",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "input": {
+        "kind": "paramRef",
+        "param": "memberId"
+      },
+      "waitFor": {
+        "kind": "load",
+        "timeoutMs": 8000
+      },
+      "riskClass": "reversible",
+      "why": "Enter the member ID to look up the member"
+    },
+    {
+      "id": "s3",
       "action": "click",
       "target": {
         "candidates": [
@@ -111,10 +144,37 @@
         "timeoutMs": 8000
       },
       "riskClass": "reversible",
-      "why": "Submit the member search"
+      "why": "Click the submit control after typing the member ID to look up the member"
     },
     {
-      "id": "s3",
+      "id": "s4",
+      "action": "extract",
+      "target": {
+        "candidates": [
+          {
+            "strategy": "role_name",
+            "role": "status",
+            "name": "Savings balance",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "role": "status",
+          "name": "Savings balance",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "waitFor": {
+        "kind": "load",
+        "timeoutMs": 8000
+      },
+      "riskClass": "reversible",
+      "why": "read the member's current savings balance"
+    },
+    {
+      "id": "s5",
       "action": "extract",
       "target": {
         "candidates": [
@@ -139,12 +199,12 @@
         "timeoutMs": 8000
       },
       "riskClass": "reversible",
-      "why": "Read the current savings balance from the member record"
+      "why": "read the member's current savings balance"
     }
   ],
   "outcomeDetectors": [
     {
-      "afterStep": 1,
+      "afterStep": 2,
       "locator": {
         "candidates": [
           {
@@ -164,7 +224,7 @@
       "outcome": "MEMBER_NOT_FOUND"
     },
     {
-      "afterStep": 1,
+      "afterStep": 2,
       "locator": {
         "candidates": [
           {
@@ -184,7 +244,7 @@
       "outcome": "PERMISSION_DENIED"
     },
     {
-      "afterStep": 1,
+      "afterStep": 2,
       "locator": {
         "candidates": [
           {

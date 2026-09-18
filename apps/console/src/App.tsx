@@ -75,6 +75,21 @@ export const App = () => {
         </button>
         <button
           onClick={async () => {
+            let id = sessionId;
+            if (!id) {
+              const started = await post("/api/session/start");
+              id = String(started.sessionId ?? "");
+              setSessionId(id);
+            }
+            if (!id) return;
+            const j = await post(`/api/session/${id}/run`, { memberId });
+            setOwner(String(j.controlOwner ?? "human"));
+          }}
+        >
+          Replay until handoff
+        </button>
+        <button
+          onClick={async () => {
             if (!sessionId) return;
             const j = await post(`/api/session/${sessionId}/escalate`);
             setOwner(String(j.controlOwner ?? "human"));

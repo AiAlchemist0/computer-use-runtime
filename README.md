@@ -45,7 +45,9 @@ Human handoff (same live session):
 pnpm serve
 ```
 
-Open `http://127.0.0.1:8787`. Start live session → Take over → click the frame (`nx`/`ny`) → Resume agent.
+`pnpm serve` starts its own mock bank (localhost, console port + 1). You do not need the Terminal 1 `pnpm bank` process for the console.
+
+Open `http://127.0.0.1:8787`. **Replay until handoff** types the member id, then pauses. Click Look up in the frame (`nx`/`ny`). Resume continues extract on the same session.
 
 ## Run without live services
 
@@ -65,6 +67,8 @@ pnpm discover -- --goal "..." --target http://127.0.0.1:4177/ --param memberId=1
 ```
 
 `LLM_PROVIDER` can be `openai`, `anthropic`, `google`, `xai`, `openrouter`, or `venice`.
+
+A weak or poorly prompted model may loop on `type` and leave a **draft**. That is still useful evidence of the live tool loop. The complete replayable artifact is the compiled / fake-LLM discovery in `/evidence`. Rebuild the pack with `pnpm evidence`.
 
 ## Layout
 

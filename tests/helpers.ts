@@ -23,9 +23,11 @@ export const startBank = async () => {
 
 export const makeAdapter = (port: number, chaos?: string) => {
   const policy = new PolicyGuard(loopbackPolicy(port));
+  const session = new Session();
   const adapter = new WebAdapter({
     policy,
+    session,
     extraHeaders: chaos ? { "x-chaos": chaos } : undefined,
   });
-  return { policy, adapter, session: new Session() };
+  return { policy, adapter, session };
 };

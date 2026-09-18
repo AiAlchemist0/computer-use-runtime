@@ -1,4 +1,4 @@
-import type { DiscoverLlm, LlmTurn } from "./llm.js";
+import { buildDiscoverPrompt, type DiscoverLlm, type LlmTurn } from "./llm.js";
 
 /**
  * Optional live provider via Vercel AI SDK.
@@ -58,18 +58,11 @@ export const createLiveLlm = async (): Promise<DiscoverLlm> => {
   };
 
   return {
-    async next({ goal, observation, history }): Promise<LlmTurn> {
+    async next({ goal, observation, history, params }): Promise<LlmTurn> {
       const result = await generateText({
         model,
         tools,
-        prompt: [
-          `Goal: ${goal}`,
-          `The page is an accessibility YAML snapshot. Act on [ref=eN] handles when present.`,
-          `Declared params should be referenced via paramRef, never raw values if they are PII.`,
-          `History:\n${history.join("\n")}`,
-          `Current page:\n${observation}`,
-          `Call exactly one tool.`,
-        ].join("\n\n"),
+        prompt: buildDiscoverPrompt({ goal, observation, history, params }),
       });
       const first = result.toolCalls[0];
       if (!first) return { text: result.text, toolCalls: [{ name: "finish", arguments: { why: result.text || "no tool" } }] };

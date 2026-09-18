@@ -23,5 +23,8 @@ export const mockBankProfile = (): AppProfile => ({
     { code: "PERMISSION_DENIED", pattern: "Permission denied" },
     { code: "VALIDATION_FAILED", pattern: "Member ID must be" },
     { code: "SESSION_EXPIRED", pattern: "Session expired" },
+    { code: "TIMEOUT", pattern: "The core is not responding" },
   ],
 });
+
+export const resolveProfile = (id: string): AppProfile | null => (id === "mock-core-v1" ? mockBankProfile() : null);

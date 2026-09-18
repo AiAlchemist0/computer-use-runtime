@@ -25,7 +25,7 @@ export class PolicyGuard {
 
   assertRoute(url: string): void {
     const path = safePath(url);
-    const ok = this.policy.allowRoutes.some((r) => path === r || path.startsWith(r.endsWith("/") ? r : `${r}`));
+    const ok = this.policy.allowRoutes.some((r) => routeMatches(path, r));
     if (!ok) throw new PolicyDenied("route not allowlisted", { path, url });
   }
 
@@ -41,11 +41,16 @@ export class PolicyGuard {
   }
 }
 
-export const loopbackPolicy = (port: number): PolicySnapshot => ({
+export const loopbackPolicy = (_port: number): PolicySnapshot => ({
   allowHosts: ["127.0.0.1", "localhost"],
-  allowRoutes: ["/"],
+  allowRoutes: ["/", "/lookup", "/member"],
   allowActions: ["navigate", "click", "type", "select", "press", "extract", "wait", "assert", "dismiss"],
 });
+
+const routeMatches = (path: string, allowed: string): boolean => {
+  if (allowed === "/") return path === "/" || path === "";
+  return path === allowed || path.startsWith(allowed.endsWith("/") ? allowed : `${allowed}/`);
+};
 
 const safeHost = (url: string): string => {
   try {

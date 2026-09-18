@@ -1,3 +1,4 @@
+export { z } from "zod";
 export * from "./types.js";
 export * from "./app-profile.js";
 export * from "./capability.js";

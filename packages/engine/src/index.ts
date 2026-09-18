@@ -11,3 +11,4 @@ export * from "./llm.js";
 export * from "./fake-llm.js";
 export * from "./seed-capability.js";
 export * from "./live-llm.js";
+export * from "./params.js";

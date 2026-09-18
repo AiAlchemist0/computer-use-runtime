@@ -29,7 +29,35 @@ describe("replay + discover", () => {
       });
       expect(out.events.every((e) => e.why.length > 0)).toBe(true);
       expect(out.capability.steps.length).toBeGreaterThan(1);
+      expect(out.capability.status).toBe("approved");
       expect(JSON.stringify(out.capability)).not.toContain("12345");
+      expect(out.capability.steps.some((s) => s.input?.kind === "paramRef" && s.input.param === "memberId")).toBe(true);
+    } finally {
+      await adapter.close();
+    }
+  });
+
+  it("rejects an unknown paramRef during discover", async () => {
+    const { adapter, policy, session } = makeAdapter(bank.port);
+    try {
+      await expect(
+        discover({
+          goal: "look up the member",
+          target: bank.url,
+          params: [{ name: "memberId", type: "string", required: true, sensitivity: "pii", description: "id" }],
+          values: { memberId: "12345" },
+          adapter,
+          llm: new FakeLlm([
+            {
+              name: "type",
+              arguments: { role: "textbox", name: "Member ID", paramRef: "ssn", why: "wrong param" },
+            },
+          ]),
+          policy,
+          session,
+          modelId: "fake",
+        }),
+      ).rejects.toMatchObject({ code: "UNKNOWN_PARAM_REF" });
     } finally {
       await adapter.close();
     }
@@ -137,6 +165,7 @@ describe("replay + discover", () => {
         target: bank.url,
       });
       expect(result.status).toBe("failed");
+      expect(result.failure?.code).toBe("UNEXPECTED_STATE");
     } finally {
       await adapter.close();
     }
@@ -208,6 +237,145 @@ describe("replay + discover", () => {
         target: bank.url,
       });
       expect(result.status).toBe("escalated");
+      expect(result.failure?.code).toBe("IRREVERSIBLE_GATED");
+    } finally {
+      await adapter.close();
+    }
+  });
+
+  it("runs an approved irreversible confirm when confirmIrreversible is set", async () => {
+    const { adapter, policy, session } = makeAdapter(bank.port);
+    const cap = seedLookupBalance(bank.port);
+    cap.riskClass = "irreversible";
+    cap.steps.push({
+      id: "s4",
+      action: "click",
+      target: {
+        candidates: [{ strategy: "role_name", role: "button", name: "Open sub-account", weak: false }],
+        fingerprint: { role: "button", name: "Open sub-account", candidateCount: 1, framePath: [] },
+        framePath: [],
+      },
+      waitFor: { kind: "text", value: "Confirm sub-account", timeoutMs: 4000 },
+      riskClass: "irreversible",
+      why: "Open the confirmation screen",
+    });
+    cap.success = { kind: "text", value: "Confirm sub-account" };
+    try {
+      const result = await replay({
+        capability: cap,
+        values: { memberId: "12345" },
+        adapter,
+        policy,
+        session,
+        target: bank.url,
+        confirmIrreversible: true,
+      });
+      expect(result.status).toBe("success");
+    } finally {
+      await adapter.close();
+    }
+  });
+
+  it("returns TARGET_NOT_FOUND when the locator matches nothing", async () => {
+    const { adapter, policy, session } = makeAdapter(bank.port);
+    const cap = seedLookupBalance(bank.port);
+    cap.steps = [
+      {
+        id: "s1",
+        action: "click",
+        target: {
+          candidates: [{ strategy: "role_name", role: "button", name: "No such control", weak: false }],
+          fingerprint: { role: "button", name: "No such control", candidateCount: 1, framePath: [] },
+          framePath: [],
+        },
+        waitFor: { kind: "load", timeoutMs: 2000 },
+        riskClass: "reversible",
+        why: "Prove missing target fails closed",
+      },
+    ];
+    try {
+      const result = await replay({
+        capability: cap,
+        values: { memberId: "12345" },
+        adapter,
+        policy,
+        session,
+        target: bank.url,
+      });
+      expect(result.status).toBe("failed");
+      expect(result.failure?.code).toBe("TARGET_NOT_FOUND");
+    } finally {
+      await adapter.close();
+    }
+  });
+
+  it("denies navigation off the route allowlist", async () => {
+    const { adapter, policy, session } = makeAdapter(bank.port);
+    const cap = seedLookupBalance(bank.port);
+    cap.steps = [
+      {
+        id: "s1",
+        action: "navigate",
+        input: { kind: "value", value: `http://127.0.0.1:${bank.port}/evil` },
+        waitFor: { kind: "load", timeoutMs: 2000 },
+        riskClass: "reversible",
+        why: "Prove policy abort",
+      },
+    ];
+    try {
+      const result = await replay({
+        capability: cap,
+        values: { memberId: "12345" },
+        adapter,
+        policy,
+        session,
+        target: bank.url,
+      });
+      expect(result.status).toBe("failed");
+      expect(result.failure?.code).toBe("POLICY_DENIED");
+    } finally {
+      await adapter.close();
+    }
+  });
+
+  it("pauses after type and resumes extract after a human Look up click", async () => {
+    const { adapter, policy, session } = makeAdapter(bank.port);
+    const cap = seedLookupBalance(bank.port);
+    try {
+      const paused = await replay({
+        capability: cap,
+        values: { memberId: "12345" },
+        adapter,
+        policy,
+        session,
+        target: bank.url,
+        pauseAfterStep: 0,
+      });
+      expect(paused.status).toBe("escalated");
+      session.setOwner("human");
+      const page = adapter.pageOrThrow();
+      const box = await page.getByRole("button", { name: "Look up" }).boundingBox();
+      expect(box).toBeTruthy();
+      const viewport = page.viewportSize() ?? { width: 1100, height: 720 };
+      await adapter.injectHumanInput("click", {
+        nx: (box!.x + box!.width / 2) / viewport.width,
+        ny: (box!.y + box!.height / 2) / viewport.height,
+        viewport,
+      });
+      session.recordHuman();
+      session.setOwner("agent");
+      const resumed = await replay({
+        capability: cap,
+        values: { memberId: "12345" },
+        adapter,
+        policy,
+        session,
+        target: bank.url,
+        skipLaunch: true,
+        resumeFrom: 1,
+      });
+      expect(resumed.status).toBe("success");
+      expect(resumed.outputs?.savingsBalance).toMatch(/1,842/);
     } finally {
       await adapter.close();
     }
@@ -224,10 +392,8 @@ describe("replay + discover", () => {
         session,
         target: bank.url,
       });
-      expect(["success", "failed", "business_outcome"]).toContain(result.status);
-      if (result.status === "success") {
-        expect(result.events.some((e) => e.kind === "recovered")).toBe(true);
-      }
+      expect(result.status).toBe("success");
+      expect(result.events.some((e) => e.kind === "recovered")).toBe(true);
     } finally {
       await adapter.close();
     }
