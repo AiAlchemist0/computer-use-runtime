@@ -39,7 +39,7 @@ This folder is the architecture record for the capability runtime. Start here if
    6. [Hosted vs local honesty](./DIAGRAMS.md#6-hosted-vs-local-honesty)
    7. [Capability contract and hands](./DIAGRAMS.md#7-capability-contract-and-hands)
    8. [Outcome taxonomy](./DIAGRAMS.md#8-outcome-taxonomy)
-3. [Evidence index](../evidence/INDEX.md) — compiled discovery, live draft, replay, HITL
+3. [Evidence index](../evidence/INDEX.md) — compiled discovery, approved live run, replay, HITL
 4. [Hosted Container spike](../apps/worker/SPIKE.md) — why recorded-fallback is the live default
 5. [Assignment report](../REPORT.md) — shorter narrative keyed to the prompt
 6. [Repository README](../README.md) — clone, serve, replay

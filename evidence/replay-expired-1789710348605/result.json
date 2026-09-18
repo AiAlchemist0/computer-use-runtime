@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0.0",
+  "runId": "7c8ec2e2-9704-4bc1-8de1-e4df24e3905e",
+  "capabilityId": "lookup-savings-balance",
+  "status": "failed",
+  "failure": {
+    "stepIndex": 2,
+    "expected": "active session",
+    "observed": "Session expired",
+    "code": "UNEXPECTED_STATE",
+    "evidenceRefs": [
+      "evidence/replay-expired-1789710348605/screenshots/final.jpg"
+    ]
+  },
+  "events": [
+    {
+      "at": "2026-09-18T05:45:48.857Z",
+      "kind": "step_ok",
+      "stepIndex": 0,
+      "why": "Enter the member identifier into the lookup field"
+    },
+    {
+      "at": "2026-09-18T05:45:48.984Z",
+      "kind": "step_ok",
+      "stepIndex": 1,
+      "why": "Submit the member search"
+    }
+  ],
+  "driftWarnings": [],
+  "evidence": {
+    "screenshots": [
+      "evidence/replay-expired-1789710348605/screenshots/final.jpg"
+    ]
+  }
+}

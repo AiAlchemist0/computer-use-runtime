@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0.0",
+  "runId": "b860eb34-eeb1-4677-a324-a8f8a71e9783",
+  "capabilityId": "lookup-savings-balance",
+  "status": "escalated",
+  "failure": {
+    "stepIndex": 0,
+    "expected": "approved + confirmIrreversible",
+    "observed": "irreversible step gated",
+    "code": "IRREVERSIBLE_GATED",
+    "evidenceRefs": []
+  },
+  "events": [
+    {
+      "at": "2026-09-18T05:45:59.296Z",
+      "kind": "escalation_requested",
+      "why": "irreversible step requires approved status and confirmIrreversible"
+    }
+  ],
+  "intervention": {
+    "sessionId": "2b3887de-84a5-4f33-bbaa-357616a84446",
+    "capabilityId": "lookup-savings-balance",
+    "goal": "look up the member and read their current savings balance",
+    "stepIndex": 0,
+    "stepWhy": "Enter the member identifier into the lookup field",
+    "reason": "IRREVERSIBLE_GATED",
+    "why": "irreversible step requires approved status and confirmIrreversible",
+    "controlOwner": "human",
+    "requestedAt": "2026-09-18T05:45:59.296Z"
+  },
+  "driftWarnings": [],
+  "evidence": {
+    "screenshots": []
+  }
+}

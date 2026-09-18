@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RunEvent } from "./events.js";
+import { InterventionRequest } from "./intervention.js";
 import { OutcomeCode } from "./types.js";
 
 export const DriftWarning = z.object({
@@ -36,6 +37,7 @@ export const RunResult = z.object({
   failure: RunFailure.optional(),
   events: z.array(RunEvent).default([]),
   driftWarnings: z.array(DriftWarning).default([]),
+  intervention: InterventionRequest.optional(),
   evidence: z.object({
     screenshots: z.array(z.string()).default([]),
     trace: z.string().optional(),

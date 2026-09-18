@@ -75,11 +75,25 @@ export const createLiveLlm = async (): Promise<DiscoverLlm> => {
             }
           : {}),
       });
+      const meta = {
+        responseId: result.response?.id,
+        usage:
+          result.usage != null
+            ? {
+                inputTokens: result.usage.inputTokens,
+                outputTokens: result.usage.outputTokens,
+              }
+            : undefined,
+        finishReason: result.finishReason,
+      };
       const first = result.toolCalls[0];
-      if (!first) return { text: result.text, toolCalls: [{ name: "finish", arguments: { why: result.text || "no tool" } }] };
+      if (!first) {
+        return { text: result.text, toolCalls: [{ name: "finish", arguments: { why: result.text || "no tool" } }], meta };
+      }
       return {
         text: result.text,
         toolCalls: [{ name: first.toolName, arguments: first.input as Record<string, unknown> }],
+        meta,
       };
     },
   };

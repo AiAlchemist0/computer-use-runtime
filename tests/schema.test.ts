@@ -2,7 +2,17 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { AppProfile, Capability, RunResult, TenantBinding, z } from "@cur/schema";
-import { buildDiscoverPrompt, normalizeParamRef, parseAriaRefs, seedLookupBalance } from "@cur/engine";
+import {
+  buildDiscoverPrompt,
+  collapseRepeatedExtracts,
+  compileDiscoveredSteps,
+  mockBankProfile,
+  normalizeOutputName,
+  normalizeParamRef,
+  parseAriaRefs,
+  seedLookupBalance,
+  sensitiveMaskPlan,
+} from "@cur/engine";
 
 describe("schema", () => {
   it("round-trips the seeded capability", () => {
@@ -61,5 +71,62 @@ describe("schema", () => {
     expect(prompt).toContain("memberId");
     expect(prompt).toContain("pii");
     expect(prompt).toContain("call finish");
+  });
+
+  it("rejects an undeclared outputName", () => {
+    const cap = seedLookupBalance(4177);
+    cap.steps[2] = { ...cap.steps[2]!, outputName: "savings_balance" };
+    expect(() => Capability.parse(cap)).toThrow(/outputName/);
+  });
+
+  it("normalizes snake_case extract names and collapses repeats", () => {
+    expect(normalizeOutputName("savings_balance", seedLookupBalance(4177).outputs)).toBe("savingsBalance");
+    const compiled = compileDiscoveredSteps({
+      goal: "look up the member and read their current savings balance",
+      profile: mockBankProfile(),
+      declaredOutputs: seedLookupBalance(4177).outputs,
+      steps: [
+        {
+          id: "s1",
+          action: "extract",
+          outputName: "savings_balance",
+          why: "once",
+          riskClass: "reversible",
+          target: seedLookupBalance(4177).steps[2]!.target,
+        },
+        {
+          id: "s2",
+          action: "extract",
+          outputName: "savingsBalance",
+          why: "twice",
+          riskClass: "reversible",
+          target: seedLookupBalance(4177).steps[2]!.target,
+        },
+        {
+          id: "s3",
+          action: "extract",
+          outputName: "savingsBalance",
+          why: "thrice",
+          riskClass: "reversible",
+          target: seedLookupBalance(4177).steps[2]!.target,
+        },
+      ],
+    });
+    expect(collapseRepeatedExtracts(compiled.steps)).toHaveLength(1);
+    expect(compiled.steps).toHaveLength(1);
+    expect(compiled.outputs.map((o) => o.name)).toEqual(["savingsBalance"]);
+    expect(compiled.success.kind).toBe("role_name");
+    expect(compiled.name).toContain("look_up_the_member");
+  });
+
+  it("plans screenshot masks from declared PII", () => {
+    const cap = seedLookupBalance(4177);
+    const plan = sensitiveMaskPlan({
+      parameters: cap.parameters,
+      values: { memberId: "12345" },
+      steps: cap.steps,
+    });
+    expect(plan.texts).toContain("12345");
+    expect(plan.chains.some((c) => c.fingerprint.name === "Member ID")).toBe(true);
   });
 });

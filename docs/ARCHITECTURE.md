@@ -127,7 +127,7 @@ pnpm workspaces. Node 22+. TypeScript. Zod 4 is the source of truth for contract
 | `apps/worker` | Cloudflare Worker + Durable Object + recorded-fallback |
 | `cli` | `discover` · `replay` · `serve` |
 | `tests` | Schema, policy, replay, HITL, serve, redaction |
-| `evidence` | Compiled discovery, live draft, success / not-found / permission, HITL |
+| `evidence` | Compiled discovery, approved live run, success / not-found / permission, HITL |
 | `schemas` | Committed JSON Schema (`capability.v1.json`, …) |
 
 Host-agnostic seams: `SurfaceAdapter`, `Store`, `DiscoverLlm`, `SessionControl`. File paths and Playwright stay behind those interfaces.
@@ -263,10 +263,14 @@ Loop (`packages/engine/src/discover.ts`):
 4. Ask `DiscoverLlm.next` for exactly one tool.
 5. Reject unknown `paramRef`. Normalize `member_id` → `memberId`.
 6. Resolve `ref` / role+name into a `LocatorChain`.
-7. Act. Record `waitFor` from whether the URL changed.
-8. If the model called `finish` **and** a step extracted, status is `approved`. Otherwise `draft`.
+7. Act. Record `waitFor` from whether the URL changed. Redact the model's `why` (declared PII plus any value the run has extracted).
+8. **Compile** (`packages/engine/src/compile.ts`): fold `outputName` onto declared outputs (`savings_balance` → `savingsBalance`), collapse repeated extracts on the same locator, derive `outputs` from the extract tools, derive `success` from the last extract target, slug `id`/`name` from the goal. Outcome detectors and `knownOutcomes` come from the `AppProfile`, not the model.
+9. If the model called `finish` **and** a step extracted, status is `approved`. Otherwise `draft`.
+10. On escalate (stagnant, repeated action, budget, model `escalate`) emit a typed `InterventionRequest` and give the session to the human.
 
 Tools: `type`, `click`, `extract`, `finish`, `escalate`. Confirm-named clicks require `authorizeIrreversible`.
+
+Every run also writes `llm-turns.jsonl` (timestamp, model, tool, provider response id / usage when the provider returns them) and `run.json` next to the redacted transcript.
 
 **Implementation — two LLMs, one interface.**
 
@@ -279,7 +283,7 @@ Tools: `type`, `click`, `extract`, `finish`, `escalate`. Confirm-named clicks re
 
 `buildDiscoverPrompt` lists declared parameter names and forbids putting `paramRef: …` into `value`. History includes `page: unchanged — do a different action` so a looping model is told to stop typing.
 
-Live providers (`openai`, `anthropic`, `google`, `xai`, `openrouter`, `venice`) are optional. A weak model that loops on `type` leaves a **draft**. That draft is honest evidence of the tool loop. The replayable artifact is the compiled / fake-LLM discovery in `/evidence`.
+Live providers (`zai`, `openai`, `anthropic`, `google`, `xai`, `openrouter`, `venice`) are optional. A weak model that loops on `type` leaves a **draft**. The checked-in live run (`discovery-4c1ef589`, `zai:glm-5.3-flash`) finished and extracted; its raw transcript shows three extracts, and the compile pass reduced that to one step. The default replayable artifact is still the compiled / fake-LLM discovery in `/evidence`.
 
 **Trade-offs.**
 
@@ -312,8 +316,9 @@ Live providers (`openai`, `anthropic`, `google`, `xai`, `openrouter`, `venice`) 
    - detectors whose `afterStep === i` classify `business_outcome`
    - `pauseAfterStep === i` sets `controlOwner=human` and returns `escalated`
 5. Success checkpoint. Missing → `CHECKPOINT_FAILED`.
+6. On `failed` or `escalated`, when a `store`/`runDir` (or `captureEvidence`) is supplied, take a masked screenshot, write it, and put its path in `failure.evidenceRefs` / `intervention.screenshotRef`. The CLI `--trace` flag adds a Playwright `trace.zip`.
 
-`RunResult.status` is exactly one of `success` | `business_outcome` | `escalated` | `failed`.
+`RunResult.status` is exactly one of `success` | `business_outcome` | `escalated` | `failed`. `escalated` results carry an `InterventionRequest`.
 
 **Trade-offs.**
 
@@ -353,8 +358,9 @@ Stuck conditions:
 | `POST /api/session/start` | Launch bank, return `sessionId` |
 | `POST /api/session/:id/run` | Replay with `skipLaunch` + `pauseAfterStep: 0` (after type) |
 | `POST /api/session/:id/click` | `{ nx, ny, viewport }` → `injectHumanInput` + `elementAtPoint` |
-| `POST /api/session/:id/resume` | `resumeFrom` 1 (still on search) or 2 (already on `/member`) |
-| `GET /api/session/:id/frame` | JPEG of the live page |
+| `POST /api/session/:id/resume` | `resumeFrom = pausedAfter + 1` on the same page |
+| `GET /api/session/:id` | `controlOwner` plus the current `InterventionRequest` (capability, goal, step, reason, why) |
+| `GET /api/session/:id/frame` | JPEG of the live page, PII fields masked |
 
 The console shows the teller iframe for the human core and the agent JPEG for the paused session. Clicks on the JPEG are normalized coordinates so the desk and the viewport can disagree in CSS pixels.
 
@@ -417,17 +423,19 @@ Discover copies business patterns onto `outcomeDetectors` at the lookup-click in
 
 | Artifact | Honesty |
 | --- | --- |
-| `discovery-566f9f39` | Complete, replayable (compiled / scripted tools) |
-| `discovery-fe5c1ff1` | Live provider, **draft / incomplete** |
+| `discovery-7b094dcc` | Complete, replayable (compiled / scripted tools) |
+| `discovery-4c1ef589` | Live provider `zai:glm-5.3-flash`, **approved**; capability compiled to three steps, raw transcript kept |
 | `replay-success-*` | From the compiled capability, member `12345` |
 | `replay-not-found-*` | `MEMBER_NOT_FOUND` + `trace.zip` |
 | `replay-permission-*` | `PERMISSION_DENIED` |
 | `hitl-local/` | Pause after type, human Look up, resume extract |
 
+Each discovery folder also carries `llm-turns.jsonl` and `run.json`.
+
 **Trade-offs.**
 
 - Files over a hosted catalog: clone-and-grade works offline. Multi-tenant promotion and ACLs are out of scope.
-- Label the live draft instead of hiding it. A green “we used Venice” screenshot would have been a lie.
+- Label an incomplete live run as `draft` instead of hiding it. The status is computed from finish+extract, not asserted by hand.
 
 ---
 
@@ -546,16 +554,20 @@ pnpm serve      # desk + bank (bank = console port + 1)
 
 | Piece | Job |
 | --- | --- |
-| Hono Worker | Health, cases, integration, replay, invoke |
+| Hono Worker | Health, cases, integration, replay (with `chaos`), invoke |
+| Live logic routes | `POST /api/policy/check`, `POST /api/policy/gate`, `POST /api/capability/validate`, `GET /api/capability/codegen`, `POST /api/canonicalize` — the engine's `PolicyGuard`, the Zod `Capability` schema, and pure transforms, imported without `web-adapter` so no Playwright reaches the bundle |
+| Recorded routes | `GET /api/evidence/manifest.json`, `GET /api/evidence/*`, `GET /api/stability` — the committed `/evidence` pack, copied to `public/evidence` by `pnpm sync:worker` (run automatically by `pnpm evidence`) |
 | Durable Object `SessionCoordinator` | Lock + daily budget for a *future* live path |
 | Turnstile | Optional; enforced only when `TURNSTILE_SECRET_KEY` is set |
 | `DEMO_ENABLED=false` | 503 kill switch |
 | CORS | `deanshev.com`, `www`, `interface.deanshev.com` |
-| Assets | Hosted dual-pane HTML |
+| Assets | Hosted dual-pane HTML + evidence pack |
 
-`GET /api/integration` returns `mode`, `capabilityId`, `hands`, `policy`, `cases`, and `invoke: POST /api/replay`. That is the document the briefing fetches.
+`GET /api/integration` returns `mode`, `capabilityId`, `hands`, `policy`, `cases`, `invoke: POST /api/replay`, and the lists of `liveLogic` and `recorded` routes. That is the document the briefing fetches.
 
-`recordedReplay(memberId)` maps the case book onto `RunResult` plus `hands[]`. Extract is `blocked` unless status is `success` — a freeze does not pretend to return `$6,441.90`.
+`recordedReplay(memberId)` maps the case book onto `RunResult` plus `hands[]`. Extract is `blocked` unless status is `success` — a freeze does not pretend to return `$6,441.90`. `recordedChaos(kind)` mirrors the `x-chaos` faults the local bank honors (timeout, expired, dialog, slow, permission) so the hosted page can show the full taxonomy; each carries an `evidenceKey` pointing at the real recorded run.
+
+Every hosted panel is labeled one of three ways: **live logic** (engine code running in the Worker), **recorded evidence** (played back from `/evidence`), or **design** (schema and reasoning only, such as `TenantBinding`). Nothing on the Worker claims to drive a browser.
 
 **Honesty decision: no exclusive DO lock on recorded JSON.** A global lock made the briefing 429 under two tabs. Recorded replay is CPU-cheap and idempotent. Kill switch and Turnstile stay. The lock remains for a future Container session.
 
@@ -579,7 +591,7 @@ Hands are the three compiled steps:
 2. `click` button `Look up`
 3. `extract` status `Savings balance` → `savingsBalance`
 
-**Implementation (site repo, not this package).** The page fetches `GET /api/integration` and calls `POST /api/replay`. Persona tabs: Bank user, Analyst, Both. Bank-only hides Replay and shows Look up; both still hit the same invoke. The teller card is reconstructed from the recorded result because the page cannot iframe loopback.
+**Implementation (site repo, not this package).** The page is a three-act walkthrough with a sticky rubric rail (§3.1–3.7 and the §8 stretch goals). Act 1 replays the live discovery transcript turn by turn with provider response ids and shows the compile pass; the artifact inspector validates against the Zod schema live, exports the contract as a function tool, and renders the generated Playwright spec. Act 2 is the teller / analyst / agent replay with fault chips, the PolicyGuard sandbox, the approval gate, and the evidence gallery with the stability sparkline. Act 3 is the recorded HITL storyboard (operator ticket, click on the same frame, resume) and the tenant / canonicalization panel. Persona tabs: Bank user, Analyst, Both, Agent. The teller card is reconstructed from the recorded result because the page cannot iframe loopback.
 
 **Trade-offs.**
 
@@ -664,7 +676,7 @@ Decisions collected in one place. Each row is a choice we would defend in review
 | Ambiguous target | Fail | Click first | Silent wrong member |
 | Zero balance | `success` | Special case | Empty is a business result |
 | Freeze / estate | `business_outcome` | `failed` | Core said no; locators worked |
-| Live model | Optional, labeled draft | Required Venice/OpenAI | Reviewers need no key |
+| Live model | Optional; status computed from finish+extract | Required provider key | Reviewers need no key; the checked-in z.ai run is approved |
 | Briefing | Client of `/api/replay` | Separate toy UI | Tests the integration layer |
 | Console path | `import.meta.url` | `process.cwd()` | Filter serve runs from `cli/` |
 | TenantBinding | Schema only | Second skin | Drift warnings are enough |

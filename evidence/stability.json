@@ -1,0 +1,82 @@
+{
+  "capabilityId": "lookup-savings-balance",
+  "parameterSet": "known member (Q-014)",
+  "runs": 10,
+  "success": 10,
+  "driftWarnings": 0,
+  "p50Ms": 412,
+  "p95Ms": 600,
+  "recordedAt": "2026-09-18T05:46:04.454Z",
+  "samples": [
+    {
+      "run": 1,
+      "status": "success",
+      "ms": 403,
+      "drift": 0,
+      "steps": 3
+    },
+    {
+      "run": 2,
+      "status": "success",
+      "ms": 439,
+      "drift": 0,
+      "steps": 3
+    },
+    {
+      "run": 3,
+      "status": "success",
+      "ms": 387,
+      "drift": 0,
+      "steps": 3
+    },
+    {
+      "run": 4,
+      "status": "success",
+      "ms": 412,
+      "drift": 0,
+      "steps": 3
+    },
+    {
+      "run": 5,
+      "status": "success",
+      "ms": 383,
+      "drift": 0,
+      "steps": 3
+    },
+    {
+      "run": 6,
+      "status": "success",
+      "ms": 419,
+      "drift": 0,
+      "steps": 3
+    },
+    {
+      "run": 7,
+      "status": "success",
+      "ms": 389,
+      "drift": 0,
+      "steps": 3
+    },
+    {
+      "run": 8,
+      "status": "success",
+      "ms": 600,
+      "drift": 0,
+      "steps": 3
+    },
+    {
+      "run": 9,
+      "status": "success",
+      "ms": 397,
+      "drift": 0,
+      "steps": 3
+    },
+    {
+      "run": 10,
+      "status": "success",
+      "ms": 412,
+      "drift": 0,
+      "steps": 3
+    }
+  ]
+}

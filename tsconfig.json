@@ -13,5 +13,5 @@
     "jsx": "react-jsx",
     "types": ["node"]
   },
-  "include": ["packages/**/*.ts", "apps/**/*.ts", "cli/**/*.ts", "tests/**/*.ts"]
+  "include": ["packages/**/*.ts", "apps/bank/**/*.ts", "apps/console/**/*.ts", "cli/**/*.ts", "tests/**/*.ts"]
 }

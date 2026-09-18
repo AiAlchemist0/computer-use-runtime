@@ -71,9 +71,13 @@ pnpm discover -- --goal "look up the member and read their current savings balan
 pnpm replay -- --artifact evidence/capabilities/lookup-savings-balance.json --target http://127.0.0.1:4177/ --param memberId=12345
 
 pnpm replay -- --artifact evidence/capabilities/lookup-savings-balance.json --target http://127.0.0.1:4177/ --param memberId=99999
+
+pnpm replay -- --artifact evidence/capabilities/lookup-savings-balance.json --target http://127.0.0.1:4177/ --param memberId=12345 --chaos timeout
 ```
 
-Expected: first replay `status: success` with `savingsBalance`; second replay `status: business_outcome` / `MEMBER_NOT_FOUND`.
+Expected: first replay `status: success` with `savingsBalance`; second replay `status: business_outcome` / `MEMBER_NOT_FOUND`; third replay `status: failed` / `TIMEOUT` with a screenshot on the result (add `--trace` for a Playwright `trace.zip`).
+
+The discover command rewrites `evidence/capabilities/lookup-savings-balance.json` and adds a `discovery-*` folder. `git checkout -- evidence` restores the checked-in pack.
 
 Human handoff (same live session):
 
@@ -96,15 +100,15 @@ Uses the fake LLM and an in-process bank. No provider key, no Cloudflare.
 ## Live model (optional)
 
 ```bash
-export LLM_PROVIDER=openai
-export LLM_MODEL=gpt-4.1-mini
-export OPENAI_API_KEY=...
-pnpm discover -- --goal "..." --target http://127.0.0.1:4177/ --param memberId=12345 --llm openai
+export LLM_PROVIDER=zai
+export LLM_MODEL=glm-5.3-flash
+export ZAI_API_KEY=...
+pnpm discover -- --goal "look up the member and read their current savings balance" --target http://127.0.0.1:4177/ --param memberId=12345 --sensitivity memberId=pii --llm zai
 ```
 
-`LLM_PROVIDER` can be `openai`, `anthropic`, `google`, `xai`, `openrouter`, `venice`, or `zai`.
+That is the command that produced `evidence/discovery-4c1ef589`. Rebuild the whole pack with `LLM_PROVIDER=zai LLM_MODEL=glm-5.3-flash pnpm evidence`. Other providers (`openai`, `anthropic`, `google`, `xai`, `openrouter`, `venice`) work the same way.
 
-A weak or poorly prompted model may loop on `type` and leave a **draft**. The checked-in live run (`evidence/discovery-4c1ef589`, `zai:glm-5.3-flash`) finished and extracted. The default replayable artifact is still the compiled / fake-LLM discovery. Rebuild the pack with `pnpm evidence`.
+A weak or poorly prompted model may loop on `type` and leave a **draft**. The checked-in live run finished and extracted. The default replayable artifact is still the compiled / fake-LLM discovery.
 
 ## Layout
 
@@ -124,4 +128,4 @@ A weak or poorly prompted model may loop on `type` and leave a **draft**. The ch
 - Briefing: [https://deanshev.com/interface](https://deanshev.com/interface)
 - Recorded replay: [https://interface.deanshev.com](https://interface.deanshev.com)
 
-The hosted console is **recorded-fallback**. It prints the result contract for the seeded capability. It does not drive a live browser. Clone this repo for discover, replay, and HITL. The graded artifact is this repository.
+The hosted console is **recorded-fallback**. It never drives a browser. What it does run live is the engine's own Chromium-free logic — `PolicyGuard`, the Zod capability schema, Playwright codegen, route canonicalization — and it serves the committed `/evidence` pack (discovery transcripts with provider response ids, replay results, masked screenshots, traces, HITL session, stability). The briefing labels every panel as live logic, recorded evidence, or design. Clone this repo for live discover, replay, and HITL. The graded artifact is this repository.

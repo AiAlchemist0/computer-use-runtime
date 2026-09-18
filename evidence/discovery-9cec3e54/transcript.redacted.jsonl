@@ -1,0 +1,7 @@
+{"tool":"type","why":"Enter member number for lookup","args":{"ref":"e22","name":"Member ID","paramRef":"memberId","why":"Enter member number for lookup"}}
+{"tool":"click","why":"Member ID is already entered; submit the lookup form to load the member record.","args":{"ref":"e24","why":"Member ID is already entered; submit the lookup form to load the member record."}}
+{"tool":"extract","why":"Member record is loaded; read the savings balance.","args":{"ref":"f1e32","outputName":"savingsBalance","why":"Member record is loaded; read the savings balance."}}
+{"tool":"extract","why":"Read the member's current savings balance.","args":{"ref":"f1e32","name":"Savings balance","outputName":"savings_balance","why":"Read the member's current savings balance."}}
+{"tool":"extract","why":"Read the member's current savings balance.","args":{"ref":"f1e32","outputName":"savings_balance","why":"Read the member's current savings balance."}}
+{"tool":"extract","why":"Read the member's current savings balance.","args":{"ref":"f1e32","outputName":"savingsBalance","why":"Read the member's current savings balance."}}
+{"tool":"finish","why":"Savings balance [redacted:output] is visible on the member record page.","args":{"why":"Savings balance [redacted:output] is visible on the member record page."}}

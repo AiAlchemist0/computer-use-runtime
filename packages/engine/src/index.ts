@@ -7,6 +7,7 @@ export * from "./session.js";
 export * from "./web-adapter.js";
 export * from "./discover.js";
 export * from "./replay.js";
+export * from "./compile.js";
 export * from "./llm.js";
 export * from "./fake-llm.js";
 export * from "./seed-capability.js";

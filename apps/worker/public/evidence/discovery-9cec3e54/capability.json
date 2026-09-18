@@ -1,0 +1,277 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "lookup-savings-balance",
+  "name": "look_up_the_member_and_read_their_current_savings_balance",
+  "description": "look up the member and read their current savings balance",
+  "revision": 1,
+  "status": "approved",
+  "appProfile": "mock-core-v1",
+  "provenance": {
+    "discoveryRunId": "9cec3e54-34a2-4ade-85e8-bc8061b755fd",
+    "modelId": "zai:glm-5.3-flash",
+    "createdAt": "2026-09-18T05:45:46.198Z",
+    "sourceHash": "4422d6b2e3edbdd9"
+  },
+  "riskClass": "reversible",
+  "policy": {
+    "allowHosts": [
+      "127.0.0.1",
+      "localhost"
+    ],
+    "allowRoutes": [
+      "/",
+      "/lookup",
+      "/member"
+    ],
+    "allowActions": [
+      "navigate",
+      "click",
+      "type",
+      "select",
+      "press",
+      "extract",
+      "wait",
+      "assert",
+      "dismiss"
+    ]
+  },
+  "parameters": [
+    {
+      "name": "memberId",
+      "type": "string",
+      "required": true,
+      "sensitivity": "pii",
+      "description": "id"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "savingsBalance",
+      "type": "string",
+      "sensitivity": "none",
+      "description": "Extracted Savings balance"
+    }
+  ],
+  "entry": {
+    "kind": "text",
+    "value": "Member lookup"
+  },
+  "steps": [
+    {
+      "id": "s1",
+      "action": "type",
+      "target": {
+        "candidates": [
+          {
+            "strategy": "role_name",
+            "role": "textbox",
+            "name": "Member ID",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "role": "textbox",
+          "name": "Member ID",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "input": {
+        "kind": "paramRef",
+        "param": "memberId"
+      },
+      "waitFor": {
+        "kind": "load",
+        "timeoutMs": 8000
+      },
+      "riskClass": "reversible",
+      "why": "Enter member number for lookup"
+    },
+    {
+      "id": "s2",
+      "action": "click",
+      "target": {
+        "candidates": [
+          {
+            "strategy": "role_name",
+            "role": "button",
+            "name": "Look up",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "role": "button",
+          "name": "Look up",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "waitFor": {
+        "kind": "load",
+        "timeoutMs": 8000
+      },
+      "riskClass": "reversible",
+      "why": "Member ID is already entered; submit the lookup form to load the member record."
+    },
+    {
+      "id": "s3",
+      "action": "extract",
+      "target": {
+        "candidates": [
+          {
+            "strategy": "role_name",
+            "role": "status",
+            "name": "Savings balance",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "role": "status",
+          "name": "Savings balance",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "outputName": "savingsBalance",
+      "waitFor": {
+        "kind": "load",
+        "timeoutMs": 8000
+      },
+      "riskClass": "reversible",
+      "why": "Member record is loaded; read the savings balance."
+    }
+  ],
+  "outcomeDetectors": [
+    {
+      "afterStep": 1,
+      "locator": {
+        "candidates": [
+          {
+            "strategy": "text",
+            "text": "No such member",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "name": "No such member",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "pattern": "No such member",
+      "outcome": "MEMBER_NOT_FOUND"
+    },
+    {
+      "afterStep": 1,
+      "locator": {
+        "candidates": [
+          {
+            "strategy": "text",
+            "text": "Permission denied",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "name": "Permission denied",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "pattern": "Permission denied",
+      "outcome": "PERMISSION_DENIED"
+    },
+    {
+      "afterStep": 1,
+      "locator": {
+        "candidates": [
+          {
+            "strategy": "text",
+            "text": "Account is frozen",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "name": "Account is frozen",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "pattern": "Account is frozen",
+      "outcome": "ACCOUNT_FROZEN"
+    },
+    {
+      "afterStep": 1,
+      "locator": {
+        "candidates": [
+          {
+            "strategy": "text",
+            "text": "Estate hold",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "name": "Estate hold",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "pattern": "Estate hold",
+      "outcome": "ESTATE_HOLD"
+    },
+    {
+      "afterStep": 1,
+      "locator": {
+        "candidates": [
+          {
+            "strategy": "text",
+            "text": "Member ID must be",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "name": "Member ID must be",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "pattern": "Member ID must be",
+      "outcome": "VALIDATION_FAILED"
+    }
+  ],
+  "success": {
+    "kind": "role_name",
+    "value": "Savings balance",
+    "role": "status",
+    "name": "Savings balance"
+  },
+  "knownOutcomes": [
+    {
+      "code": "MEMBER_NOT_FOUND",
+      "description": "No member exists for the supplied ID"
+    },
+    {
+      "code": "PERMISSION_DENIED",
+      "description": "Operator is not allowed to view this record"
+    },
+    {
+      "code": "ACCOUNT_FROZEN",
+      "description": "Fraud or operational freeze blocks servicing"
+    },
+    {
+      "code": "ESTATE_HOLD",
+      "description": "Deceased member — supervisor and letters required"
+    },
+    {
+      "code": "VALIDATION_FAILED",
+      "description": "Member ID failed field validation"
+    }
+  ]
+}

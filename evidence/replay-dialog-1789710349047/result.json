@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0.0",
+  "runId": "6159e0b8-e258-4401-932b-c2416193be3a",
+  "capabilityId": "lookup-savings-balance",
+  "status": "success",
+  "outputs": {
+    "savingsBalance": "$1,842.17"
+  },
+  "events": [
+    {
+      "at": "2026-09-18T05:45:49.328Z",
+      "kind": "recovered",
+      "stepIndex": 0,
+      "why": "dismissed unexpected-dialog"
+    },
+    {
+      "at": "2026-09-18T05:45:49.408Z",
+      "kind": "step_ok",
+      "stepIndex": 0,
+      "why": "Enter the member identifier into the lookup field"
+    },
+    {
+      "at": "2026-09-18T05:45:49.560Z",
+      "kind": "step_ok",
+      "stepIndex": 1,
+      "why": "Submit the member search"
+    },
+    {
+      "at": "2026-09-18T05:45:49.572Z",
+      "kind": "step_ok",
+      "stepIndex": 2,
+      "why": "Read the current savings balance from the member record"
+    }
+  ],
+  "driftWarnings": [],
+  "evidence": {
+    "screenshots": [
+      "evidence/replay-dialog-1789710349047/screenshots/final.jpg"
+    ]
+  }
+}

@@ -15,13 +15,15 @@ import {
   WebAdapter,
   loopbackPolicy,
 } from "@cur/engine";
-import { Capability, type RunResult } from "@cur/schema";
+import type { InterventionRequest } from "@cur/schema";
+
+type ReplayBody = { memberId?: string; chaos?: string; confirmIrreversible?: boolean };
 
 type Live = {
   session: Session;
   adapter: WebAdapter;
   lastJpeg?: Buffer;
-  intervention?: { why: string; step?: number };
+  intervention?: InterventionRequest;
   memberId?: string;
   pausedAfter?: number;
 };
@@ -47,7 +49,7 @@ export const startServe = async (port: number) => {
   app.post("/capabilities/:id/invoke", async (c) => {
     const id = c.req.param("id");
     if (id !== "lookup-savings-balance") return c.json({ error: "unknown capability" }, 404);
-    const body = await c.req.json<{ memberId?: string; chaos?: string; confirmIrreversible?: boolean }>().catch(() => ({}));
+    const body = await c.req.json<ReplayBody>().catch((): ReplayBody => ({}));
     const policy = new PolicyGuard(loopbackPolicy(bankPort));
     const adapter = new WebAdapter({
       policy,
@@ -145,8 +147,16 @@ export const startServe = async (port: number) => {
       pauseAfterStep: 0,
     });
     live.pausedAfter = 0;
-    live.intervention = { why: "paused after type for operator click", step: 0 };
-    live.lastJpeg = await live.adapter.screenshot();
+    live.intervention = result.intervention ?? {
+      sessionId: live.session.id,
+      capabilityId: "lookup-savings-balance",
+      reason: "PAUSE_AFTER_STEP",
+      why: "paused after type for operator click",
+      stepIndex: 0,
+      controlOwner: live.session.controlOwner,
+      requestedAt: new Date().toISOString(),
+    };
+    live.lastJpeg = await maskedShot(live, bankPort);
     return c.json({ ...result, controlOwner: live.session.controlOwner });
   });
 
@@ -154,8 +164,15 @@ export const startServe = async (port: number) => {
     const live = lives.get(c.req.param("id"));
     if (!live) return c.json({ error: "not found" }, 404);
     live.session.setOwner("human");
-    live.intervention = { why: "operator takeover requested" };
-    live.lastJpeg = await live.adapter.screenshot();
+    live.intervention = {
+      sessionId: live.session.id,
+      capabilityId: "lookup-savings-balance",
+      reason: "REPLAY_UNRECOVERABLE",
+      why: "operator takeover requested",
+      controlOwner: "human",
+      requestedAt: new Date().toISOString(),
+    };
+    live.lastJpeg = await maskedShot(live, bankPort);
     return c.json({ controlOwner: live.session.controlOwner, why: live.intervention.why });
   });
 
@@ -169,7 +186,7 @@ export const startServe = async (port: number) => {
     await live.adapter.injectHumanInput("click", body);
     live.session.recordHuman();
     const locator = await live.adapter.elementAtPoint(body.nx, body.ny, body.viewport);
-    live.lastJpeg = await live.adapter.screenshot();
+    live.lastJpeg = await maskedShot(live, bankPort);
     return c.json({ recorded: { nx: body.nx, ny: body.ny, viewport: body.viewport, locator } });
   });
 
@@ -178,8 +195,7 @@ export const startServe = async (port: number) => {
     if (!live) return c.json({ error: "not found" }, 404);
     live.session.setOwner("agent");
     live.intervention = undefined;
-    const url = await live.adapter.url();
-    const resumeFrom = url.includes("/member") ? 2 : 1;
+    const resumeFrom = (live.pausedAfter ?? -1) + 1;
     const policy = new PolicyGuard(loopbackPolicy(bankPort));
     const result = await replay({
       capability: seedLookupBalance(bankPort),
@@ -191,14 +207,14 @@ export const startServe = async (port: number) => {
       skipLaunch: true,
       resumeFrom,
     });
-    live.lastJpeg = await live.adapter.screenshot().catch(() => live.lastJpeg);
+    live.lastJpeg = await maskedShot(live, bankPort).catch(() => live.lastJpeg);
     return c.json({ controlOwner: live.session.controlOwner, result });
   });
 
   app.get("/api/session/:id/frame", async (c) => {
     const live = lives.get(c.req.param("id"));
     if (!live) return c.json({ error: "not found" }, 404);
-    live.lastJpeg = await live.adapter.screenshot();
+    live.lastJpeg = await maskedShot(live, bankPort);
     return c.body(new Uint8Array(live.lastJpeg), 200, { "content-type": "image/jpeg" });
   });
 
@@ -244,6 +260,15 @@ export const startServe = async (port: number) => {
       lives.clear();
     },
   };
+};
+
+const maskedShot = (live: Live, bankPort: number) => {
+  const cap = seedLookupBalance(bankPort);
+  return live.adapter.screenshot({
+    values: { memberId: live.memberId ?? "12345" },
+    parameters: cap.parameters,
+    steps: cap.steps,
+  });
 };
 
 const fallbackHtml = (bank: string) => `<!doctype html>

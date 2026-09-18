@@ -12,4 +12,15 @@ describe("redaction", () => {
     expect(out).not.toContain("111-22-3333");
     expect(out).toContain("[redacted:memberId]");
   });
+
+  it("redacts extracted output values from why text", () => {
+    const out = redactText(
+      "Goal is visible as $1,842.17",
+      [],
+      {},
+      ["$1,842.17"],
+    );
+    expect(out).not.toContain("1,842.17");
+    expect(out).toContain("[redacted:output]");
+  });
 });

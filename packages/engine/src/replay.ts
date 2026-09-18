@@ -1,9 +1,11 @@
+import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import type { Capability, DriftWarning, RunEvent, RunResult } from "@cur/schema";
+import type { Capability, DriftWarning, InterventionRequest, InterventionReason, RunEvent, RunResult } from "@cur/schema";
 import type { WebAdapter } from "./web-adapter.js";
 import { PolicyDenied, PolicyGuard } from "./policy.js";
 import type { Session } from "./session.js";
 import { mockBankProfile, resolveProfile } from "./profiles.js";
+import type { Store } from "./interfaces.js";
 
 export type ReplayInput = {
   capability: Capability;
@@ -16,6 +18,9 @@ export type ReplayInput = {
   pauseAfterStep?: number;
   resumeFrom?: number;
   skipLaunch?: boolean;
+  store?: Store;
+  runDir?: string;
+  captureEvidence?: boolean;
 };
 
 export const replay = async (input: ReplayInput): Promise<RunResult> => {
@@ -26,10 +31,12 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
   const runId = randomUUID();
   adapter.bindSession(session);
 
+  const seal = (result: RunResult) => attachEvidence(result, input);
+
   if (capability.riskClass === "irreversible" || capability.steps.some((s) => s.riskClass === "irreversible")) {
     if (capability.status !== "approved" || !input.confirmIrreversible) {
       session.setOwner("human");
-      return {
+      return seal({
         schemaVersion: "1.0.0",
         runId,
         capabilityId: capability.id,
@@ -48,9 +55,10 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
             why: "irreversible step requires approved status and confirmIrreversible",
           },
         ],
+        intervention: makeIntervention(input, "IRREVERSIBLE_GATED", "irreversible step requires approved status and confirmIrreversible", 0),
         driftWarnings: [],
         evidence: { screenshots: [] },
-      };
+      });
     }
   }
 
@@ -58,7 +66,7 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
     await adapter.launch(input.target);
     policy.assertNavigate(input.target);
     if (!(await adapter.assertCheckpoint(capability.entry))) {
-      return fail(runId, capability.id, 0, "entry checkpoint", "entry screen not visible", "CHECKPOINT_FAILED", events);
+      return seal(fail(runId, capability.id, 0, "entry checkpoint", "entry screen not visible", "CHECKPOINT_FAILED", events));
     }
   } else {
     policy.assertNavigate(await adapter.url());
@@ -88,11 +96,11 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
 
       const timeoutPattern = profile.errorPatterns.find((p) => p.code === "TIMEOUT")?.pattern ?? "The core is not responding";
       if (await adapter.assertCheckpoint({ kind: "text", value: timeoutPattern })) {
-        return fail(runId, capability.id, i, "lookup response", timeoutPattern, "TIMEOUT", events, driftWarnings);
+        return seal(fail(runId, capability.id, i, "lookup response", timeoutPattern, "TIMEOUT", events, driftWarnings));
       }
 
       if (profile.sessionExpired && (await adapter.assertCheckpoint(profile.sessionExpired))) {
-        return fail(runId, capability.id, i, "active session", profile.sessionExpired.value, "UNEXPECTED_STATE", events, driftWarnings);
+        return seal(fail(runId, capability.id, i, "active session", profile.sessionExpired.value, "UNEXPECTED_STATE", events, driftWarnings));
       }
 
       const value =
@@ -139,7 +147,7 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
         try {
           await adapter.waitFor(step.waitFor.kind, step.waitFor.value, step.waitFor.timeoutMs);
         } catch {
-          return fail(runId, capability.id, i, step.waitFor.value ?? step.waitFor.kind, "wait timed out", "TIMEOUT", events, driftWarnings);
+          return seal(fail(runId, capability.id, i, step.waitFor.value ?? step.waitFor.kind, "wait timed out", "TIMEOUT", events, driftWarnings));
         }
       }
       if (Date.now() - started > 1500) {
@@ -166,26 +174,27 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
       if (input.pauseAfterStep === i) {
         session.setOwner("human");
         events.push({ at: now(), kind: "escalation_requested", why: "pauseAfterStep — operator takeover" });
-        return {
+        return seal({
           schemaVersion: "1.0.0",
           runId,
           capabilityId: capability.id,
           status: "escalated",
           events,
+          intervention: makeIntervention(input, "PAUSE_AFTER_STEP", "pauseAfterStep — operator takeover", i),
           driftWarnings,
           evidence: { screenshots: [] },
-        };
+        });
       }
     } catch (err) {
       if (err instanceof PolicyDenied) {
-        return fail(runId, capability.id, i, "policy allow", err.reason, "POLICY_DENIED", events, driftWarnings);
+        return seal(fail(runId, capability.id, i, "policy allow", err.reason, "POLICY_DENIED", events, driftWarnings));
       }
       const code = (err as { code?: string }).code;
       if (code === "AMBIGUOUS_TARGET") {
-        return fail(runId, capability.id, i, "unique target", "multiple matches", "AMBIGUOUS_TARGET", events, driftWarnings);
+        return seal(fail(runId, capability.id, i, "unique target", "multiple matches", "AMBIGUOUS_TARGET", events, driftWarnings));
       }
       if (code === "TARGET_NOT_FOUND") {
-        return fail(runId, capability.id, i, "target present", "not found", "TARGET_NOT_FOUND", events, driftWarnings);
+        return seal(fail(runId, capability.id, i, "target present", "not found", "TARGET_NOT_FOUND", events, driftWarnings));
       }
       throw err;
     }
@@ -193,7 +202,7 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
 
   const ok = await adapter.assertCheckpoint(capability.success);
   if (!ok) {
-    return fail(runId, capability.id, capability.steps.length - 1, capability.success.value, "success checkpoint missing", "CHECKPOINT_FAILED", events, driftWarnings);
+    return seal(fail(runId, capability.id, capability.steps.length - 1, capability.success.value, "success checkpoint missing", "CHECKPOINT_FAILED", events, driftWarnings));
   }
 
   return {
@@ -227,5 +236,57 @@ const fail = (
   driftWarnings,
   evidence: { screenshots: [] },
 });
+
+const makeIntervention = (
+  input: ReplayInput,
+  reason: InterventionReason,
+  why: string,
+  stepIndex?: number,
+): InterventionRequest => ({
+  sessionId: input.session.id,
+  capabilityId: input.capability.id,
+  goal: input.capability.description,
+  stepIndex,
+  stepWhy: stepIndex != null ? input.capability.steps[stepIndex]?.why : undefined,
+  reason,
+  why,
+  controlOwner: input.session.controlOwner,
+  requestedAt: now(),
+});
+
+const attachEvidence = async (result: RunResult, input: ReplayInput): Promise<RunResult> => {
+  if (result.status !== "failed" && result.status !== "escalated") return result;
+  const refs: string[] = [...(result.failure?.evidenceRefs ?? [])];
+  if (input.adapter.isOpen() && (input.store || input.captureEvidence)) {
+    const shot = await input.adapter
+      .screenshot({
+        values: input.values,
+        parameters: input.capability.parameters,
+        steps: input.capability.steps,
+      })
+      .catch(() => undefined);
+    if (shot) {
+      if (input.store && input.runDir) {
+        await input.store.writeBinary(join(input.runDir, "screenshots"), "final.jpg", shot);
+        const ref = `evidence/${input.runDir}/screenshots/final.jpg`;
+        refs.push(ref);
+        result.evidence.screenshots = [...result.evidence.screenshots, ref];
+        if (result.intervention) result.intervention.screenshotRef = ref;
+      } else {
+        refs.push("screenshot");
+        result.evidence.screenshots = [...result.evidence.screenshots, "screenshot"];
+        if (result.intervention) result.intervention.screenshotRef = "screenshot";
+      }
+    }
+    if (input.store && input.runDir) {
+      result.intervention = result.intervention ?? undefined;
+      if (result.intervention && !result.intervention.url) {
+        result.intervention.url = await input.adapter.url().catch(() => undefined);
+      }
+    }
+  }
+  if (result.failure) result.failure = { ...result.failure, evidenceRefs: refs };
+  return result;
+};
 
 const now = () => new Date().toISOString();

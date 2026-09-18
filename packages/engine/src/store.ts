@@ -4,7 +4,7 @@ import { Capability, type RunResult } from "@cur/schema";
 import type { Store } from "./interfaces.js";
 
 export class FileStore implements Store {
-  constructor(private readonly root: string) {}
+  constructor(readonly root: string) {}
 
   async writeCapability(id: string, cap: Capability): Promise<void> {
     const dir = join(this.root, "capabilities");

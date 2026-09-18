@@ -1,8 +1,9 @@
 import { type Browser, type BrowserContext, type Frame, type Locator, type Page, chromium } from "playwright";
-import type { ActionType, Checkpoint, LocatorCandidate, LocatorChain } from "@cur/schema";
+import type { ActionType, CapabilityStep, Checkpoint, LocatorCandidate, LocatorChain, Parameter } from "@cur/schema";
 import { PolicyDenied, PolicyGuard } from "./policy.js";
 import type { ActRequest, ExtractResult, HumanPointer, ObserveResult, SurfaceAdapter } from "./interfaces.js";
 import type { Session } from "./session.js";
+import { sensitiveMaskPlan } from "./compile.js";
 
 export type WebAdapterOptions = {
   policy: PolicyGuard;
@@ -150,9 +151,19 @@ export class WebAdapter implements SurfaceAdapter {
     return { text };
   }
 
-  async screenshot(opts?: { mask?: LocatorChain[] }): Promise<Buffer> {
+  async screenshot(opts?: {
+    mask?: LocatorChain[];
+    values?: Record<string, string>;
+    parameters?: Parameter[];
+    steps?: CapabilityStep[];
+  }): Promise<Buffer> {
     const page = this.pageOrThrow();
     const mask: Locator[] = [];
+    const plan = sensitiveMaskPlan({
+      parameters: opts?.parameters,
+      values: opts?.values,
+      steps: opts?.steps,
+    });
     for (const chain of opts?.mask ?? []) {
       try {
         mask.push(await this.uniqueLocator(chain));
@@ -160,6 +171,17 @@ export class WebAdapter implements SurfaceAdapter {
         if (chain.candidates[0]) mask.push(this.locatorFromChain(chain));
       }
     }
+    for (const chain of plan.chains) {
+      try {
+        if (chain.candidates[0]) mask.push(this.locatorFromChain(chain));
+      } catch {
+        /* skip an unresolvable auto-mask */
+      }
+    }
+    for (const text of plan.texts) {
+      mask.push(page.getByText(text, { exact: false }));
+    }
+    await page.waitForLoadState("domcontentloaded", { timeout: 4000 }).catch(() => undefined);
     return page.screenshot({
       type: "jpeg",
       quality: 55,

@@ -159,6 +159,67 @@
         "additionalProperties": false
       }
     },
+    "intervention": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string"
+        },
+        "capabilityId": {
+          "type": "string"
+        },
+        "goal": {
+          "type": "string"
+        },
+        "stepIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "stepWhy": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "STAGNANT",
+            "REPEATED_ACTION",
+            "BUDGET",
+            "MODEL_ESCALATE",
+            "IRREVERSIBLE_GATED",
+            "REPLAY_UNRECOVERABLE",
+            "PAUSE_AFTER_STEP"
+          ]
+        },
+        "why": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "screenshotRef": {
+          "type": "string"
+        },
+        "controlOwner": {
+          "type": "string",
+          "enum": [
+            "agent",
+            "human"
+          ]
+        },
+        "requestedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sessionId",
+        "reason",
+        "why",
+        "controlOwner",
+        "requestedAt"
+      ],
+      "additionalProperties": false
+    },
     "evidence": {
       "type": "object",
       "properties": {

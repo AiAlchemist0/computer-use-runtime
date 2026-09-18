@@ -195,6 +195,85 @@ const annotateHands = (outcome: string) =>
 
 const event = (why: string) => [{ at: "2026-09-17T00:00:00.000Z", kind: "step_ok" as const, why }];
 
+export type Chaos = "timeout" | "expired" | "dialog" | "slow" | "permission";
+
+/** Injected runtime faults, mirrored from the recorded evidence runs so the hosted demo can show the taxonomy. */
+const CHAOS: Record<Chaos, (id: string) => Record<string, unknown>> = {
+  timeout: (id) => ({
+    schemaVersion: "1.0.0",
+    runId: "evidence-replay-timeout",
+    capabilityId: "lookup-savings-balance",
+    status: "failed",
+    memberId: id,
+    chaos: "timeout",
+    failure: {
+      stepIndex: 0,
+      expected: "lookup response",
+      observed: "The core is not responding",
+      code: "TIMEOUT",
+      evidenceRefs: [],
+    },
+    events: [],
+    hands: HANDS.map((h, i) => (i === 0 ? { ...h, state: "blocked" as const, reason: "TIMEOUT" } : { ...h, state: "pending" as const })),
+    policy: POLICY,
+    driftWarnings: [],
+    evidence: { screenshots: [] },
+    evidenceKey: "replay-timeout",
+  }),
+  expired: (id) => ({
+    schemaVersion: "1.0.0",
+    runId: "evidence-replay-expired",
+    capabilityId: "lookup-savings-balance",
+    status: "failed",
+    memberId: id,
+    chaos: "expired",
+    failure: {
+      stepIndex: 0,
+      expected: "active session",
+      observed: "Session expired",
+      code: "UNEXPECTED_STATE",
+      evidenceRefs: [],
+    },
+    events: [],
+    hands: HANDS.map((h, i) => (i === 0 ? { ...h, state: "blocked" as const, reason: "UNEXPECTED_STATE" } : { ...h, state: "pending" as const })),
+    policy: POLICY,
+    driftWarnings: [],
+    evidence: { screenshots: [] },
+    evidenceKey: "replay-expired",
+  }),
+  dialog: (id) => ({
+    ...recordedReplay(id),
+    runId: "evidence-replay-dialog",
+    chaos: "dialog",
+    evidenceKey: "replay-dialog",
+    events: [
+      { at: "2026-09-17T00:00:00.000Z", kind: "recovered", stepIndex: 0, why: "dismissed unexpected-dialog" },
+      ...event("recorded extract after interstitial dismissed"),
+    ],
+  }),
+  slow: (id) => ({
+    ...recordedReplay(id),
+    runId: "evidence-replay-slow",
+    chaos: "slow",
+    evidenceKey: "replay-slow",
+    events: [
+      { at: "2026-09-17T00:00:00.000Z", kind: "recovered", stepIndex: 1, why: "slow load waited out" },
+      ...event("recorded extract after slow load"),
+    ],
+  }),
+  permission: () => ({
+    ...recordedReplay("88888"),
+    runId: "evidence-replay-permission",
+    chaos: "permission",
+    evidenceKey: "replay-permission",
+  }),
+};
+
+export const isChaos = (v: unknown): v is Chaos =>
+  typeof v === "string" && ["timeout", "expired", "dialog", "slow", "permission"].includes(v);
+
+export const recordedChaos = (chaos: Chaos, memberId?: string) => CHAOS[chaos](memberId ?? "12345");
+
 export const recordedReplay = (memberId?: string) => {
   const id = memberId ?? "12345";
   const c = CASES.find((row) => row.id === id);

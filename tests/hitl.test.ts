@@ -51,6 +51,7 @@ describe("HITL session", () => {
         pauseAfterStep: 0,
       });
       expect(paused.status).toBe("escalated");
+      expect(paused.intervention?.reason).toBe("PAUSE_AFTER_STEP");
       expect(session.controlOwner).toBe("human");
       const page = adapter.pageOrThrow();
       const button = page.getByRole("button", { name: "Look up" });

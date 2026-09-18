@@ -1,0 +1,4 @@
+{"at":"2026-09-18T05:45:49.328Z","kind":"recovered","stepIndex":0,"why":"dismissed unexpected-dialog"}
+{"at":"2026-09-18T05:45:49.408Z","kind":"step_ok","stepIndex":0,"why":"Enter the member identifier into the lookup field"}
+{"at":"2026-09-18T05:45:49.560Z","kind":"step_ok","stepIndex":1,"why":"Submit the member search"}
+{"at":"2026-09-18T05:45:49.572Z","kind":"step_ok","stepIndex":2,"why":"Read the current savings balance from the member record"}

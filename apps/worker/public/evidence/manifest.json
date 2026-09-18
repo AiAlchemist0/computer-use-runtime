@@ -1,0 +1,155 @@
+{
+  "generatedAt": "2026-09-18T05:46:06.193Z",
+  "runs": [
+    {
+      "dir": "capabilities",
+      "kind": "capability",
+      "label": "Replayable capability",
+      "files": [
+        "capabilities/lookup-savings-balance.json"
+      ]
+    },
+    {
+      "dir": "discovery-18f64735",
+      "kind": "discovery",
+      "label": "Compiled discovery (scripted tools)",
+      "status": "approved",
+      "modelId": "fake+aria-ref",
+      "files": [
+        "discovery-18f64735/capability.json",
+        "discovery-18f64735/llm-turns.jsonl",
+        "discovery-18f64735/run.json",
+        "discovery-18f64735/screenshots/final.jpg",
+        "discovery-18f64735/steps.json",
+        "discovery-18f64735/transcript.redacted.jsonl"
+      ]
+    },
+    {
+      "dir": "discovery-9cec3e54",
+      "kind": "discovery",
+      "label": "Live discovery (zai:glm-5.3-flash)",
+      "status": "approved",
+      "modelId": "zai:glm-5.3-flash",
+      "files": [
+        "discovery-9cec3e54/capability.json",
+        "discovery-9cec3e54/llm-turns.jsonl",
+        "discovery-9cec3e54/run.json",
+        "discovery-9cec3e54/screenshots/final.jpg",
+        "discovery-9cec3e54/steps.json",
+        "discovery-9cec3e54/transcript.redacted.jsonl"
+      ]
+    },
+    {
+      "dir": "hitl-local",
+      "kind": "hitl",
+      "label": "HITL same-session handoff",
+      "status": "success",
+      "files": [
+        "hitl-local/result.json",
+        "hitl-local/screenshots/takeover.jpg"
+      ]
+    },
+    {
+      "dir": "replay-dialog-1789710349047",
+      "kind": "replay",
+      "label": "dialog",
+      "status": "success",
+      "files": [
+        "replay-dialog-1789710349047/events.jsonl",
+        "replay-dialog-1789710349047/result.json",
+        "replay-dialog-1789710349047/screenshots/final.jpg"
+      ]
+    },
+    {
+      "dir": "replay-expired-1789710348605",
+      "kind": "replay",
+      "label": "expired",
+      "status": "failed",
+      "failureCode": "UNEXPECTED_STATE",
+      "files": [
+        "replay-expired-1789710348605/events.jsonl",
+        "replay-expired-1789710348605/result.json",
+        "replay-expired-1789710348605/screenshots/final.jpg"
+      ]
+    },
+    {
+      "dir": "replay-gated-1789710359296",
+      "kind": "replay",
+      "label": "gated",
+      "status": "escalated",
+      "failureCode": "IRREVERSIBLE_GATED",
+      "files": [
+        "replay-gated-1789710359296/events.jsonl",
+        "replay-gated-1789710359296/result.json"
+      ]
+    },
+    {
+      "dir": "replay-not-found-1789710346869",
+      "kind": "replay",
+      "label": "not found",
+      "status": "business_outcome",
+      "outcome": "MEMBER_NOT_FOUND",
+      "files": [
+        "replay-not-found-1789710346869/events.jsonl",
+        "replay-not-found-1789710346869/result.json",
+        "replay-not-found-1789710346869/screenshots/final.jpg",
+        "replay-not-found-1789710346869/trace.zip"
+      ]
+    },
+    {
+      "dir": "replay-permission-1789710347468",
+      "kind": "replay",
+      "label": "permission",
+      "status": "business_outcome",
+      "outcome": "PERMISSION_DENIED",
+      "files": [
+        "replay-permission-1789710347468/events.jsonl",
+        "replay-permission-1789710347468/result.json",
+        "replay-permission-1789710347468/screenshots/final.jpg"
+      ]
+    },
+    {
+      "dir": "replay-slow-1789710349652",
+      "kind": "replay",
+      "label": "slow",
+      "status": "success",
+      "files": [
+        "replay-slow-1789710349652/events.jsonl",
+        "replay-slow-1789710349652/result.json",
+        "replay-slow-1789710349652/screenshots/final.jpg"
+      ]
+    },
+    {
+      "dir": "replay-success-1789710346349",
+      "kind": "replay",
+      "label": "success",
+      "status": "success",
+      "files": [
+        "replay-success-1789710346349/events.jsonl",
+        "replay-success-1789710346349/result.json",
+        "replay-success-1789710346349/screenshots/final.jpg"
+      ]
+    },
+    {
+      "dir": "replay-timeout-1789710347885",
+      "kind": "replay",
+      "label": "timeout",
+      "status": "failed",
+      "failureCode": "TIMEOUT",
+      "files": [
+        "replay-timeout-1789710347885/events.jsonl",
+        "replay-timeout-1789710347885/result.json",
+        "replay-timeout-1789710347885/screenshots/final.jpg",
+        "replay-timeout-1789710347885/trace.zip"
+      ]
+    },
+    {
+      "dir": "stability.json",
+      "kind": "stability",
+      "label": "Multi-run stability",
+      "files": [
+        "stability.json"
+      ]
+    }
+  ]
+}

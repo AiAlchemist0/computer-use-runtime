@@ -3,9 +3,23 @@ export type ToolCall = {
   arguments: Record<string, unknown>;
 };
 
+export type LlmTurnMeta = {
+  responseId?: string;
+  usage?: { inputTokens?: number; outputTokens?: number };
+  finishReason?: string;
+};
+
 export type LlmTurn = {
   text?: string;
   toolCalls: ToolCall[];
+  meta?: LlmTurnMeta;
+};
+
+export type LlmTurnRecord = {
+  at: string;
+  modelId: string;
+  toolName: string;
+  meta?: LlmTurnMeta;
 };
 
 export interface DiscoverLlm {

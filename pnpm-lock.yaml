@@ -86,6 +86,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@cur/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
       hono:
         specifier: ^4.9.6
         version: 4.13.8

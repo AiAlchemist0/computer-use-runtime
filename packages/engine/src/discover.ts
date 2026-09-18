@@ -1,12 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { Capability, CapabilityStep, LocatorChain, Parameter } from "@cur/schema";
+import type { Capability, CapabilityStep, InterventionRequest, LocatorChain, Parameter } from "@cur/schema";
 import { annotateFramePath, deriveChain, deriveChainFromRef, parseAriaRefs, WebAdapter } from "./web-adapter.js";
 import { PolicyGuard, PolicyDenied } from "./policy.js";
-import type { DiscoverLlm } from "./llm.js";
+import type { DiscoverLlm, LlmTurnRecord } from "./llm.js";
 import type { Session } from "./session.js";
 import { mockBankProfile } from "./profiles.js";
 import { redactText } from "./redact.js";
 import { coerceParamRef, isDiscoverComplete } from "./params.js";
+import { compileDiscoveredSteps, detectorsFromProfile, knownOutcomesFromProfile, slugFromGoal } from "./compile.js";
 
 export type DiscoverInput = {
   goal: string;
@@ -27,6 +28,8 @@ export type DiscoverOutput = {
   capability: Capability;
   events: Array<{ why: string; action: string; kind?: string }>;
   transcript: string[];
+  llmTurns: LlmTurnRecord[];
+  intervention?: InterventionRequest;
 };
 
 const hash = (s: string) => createHash("sha256").update(s).digest("hex").slice(0, 16);
@@ -36,25 +39,42 @@ export const discover = async (input: DiscoverInput): Promise<DiscoverOutput> =>
   const deadline = Date.now() + (input.timeoutMs ?? 120_000);
   const steps: CapabilityStep[] = [];
   const transcript: string[] = [];
+  const llmTurns: LlmTurnRecord[] = [];
   const events: Array<{ why: string; action: string; kind?: string }> = [];
   const history: string[] = [];
+  const extractedValues: string[] = [];
   let lastHash = "";
   let stagnant = 0;
   let lastAction = "";
   let finished = false;
+  let intervention: InterventionRequest | undefined;
 
   input.adapter.bindSession(input.session);
   await input.adapter.launch(input.target);
   input.policy.assertNavigate(input.target);
 
-  const escalate = (why: string) => {
+  const escalate = (why: string, reason: InterventionRequest["reason"]) => {
     input.session.setOwner("human");
     events.push({ action: "escalate", why, kind: "escalation_requested" });
     history.push(`escalate: ${why}`);
+    intervention = {
+      sessionId: input.session.id,
+      capabilityId: slugFromGoal(input.goal),
+      goal: input.goal,
+      stepIndex: Math.max(0, steps.length - 1),
+      stepWhy: steps.at(-1)?.why,
+      reason,
+      why,
+      controlOwner: "human",
+      requestedAt: new Date().toISOString(),
+    };
   };
 
   for (let i = 0; i < maxSteps; i++) {
-    if (Date.now() > deadline) break;
+    if (Date.now() > deadline) {
+      escalate("discover step/time budget exhausted", "BUDGET");
+      break;
+    }
     input.session.assertAgent();
     const obs = await input.adapter.observe();
     const snapHash = hash(obs.aria);
@@ -63,7 +83,7 @@ export const discover = async (input: DiscoverInput): Promise<DiscoverOutput> =>
     else if (snapHash !== lastHash) stagnant = 0;
     lastHash = snapHash;
     if (stagnant >= 3) {
-      escalate("stagnant snapshot; operator takeover");
+      escalate("stagnant snapshot; operator takeover", lastAction ? "REPEATED_ACTION" : "STAGNANT");
       break;
     }
 
@@ -80,18 +100,27 @@ export const discover = async (input: DiscoverInput): Promise<DiscoverOutput> =>
     });
     const call = turn.toolCalls[0];
     if (!call) break;
-    const why = String(call.arguments.why ?? turn.text ?? call.name);
+    llmTurns.push({
+      at: new Date().toISOString(),
+      modelId: input.modelId,
+      toolName: call.name,
+      meta: turn.meta,
+    });
+    const why = redactText(String(call.arguments.why ?? turn.text ?? call.name), input.params, input.values, extractedValues);
+
+    const redactArgs = (args: Record<string, unknown>) =>
+      JSON.parse(redactText(JSON.stringify(args), input.params, input.values, extractedValues)) as Record<string, unknown>;
 
     if (call.name === "finish") {
       finished = true;
       events.push({ action: "finish", why });
       history.push(`finish: ${why}`);
-      transcript.push(JSON.stringify({ tool: call.name, why, args: call.arguments }));
+      transcript.push(JSON.stringify({ tool: call.name, why, args: redactArgs(call.arguments) }));
       break;
     }
     if (call.name === "escalate") {
-      transcript.push(JSON.stringify({ tool: call.name, why, args: call.arguments }));
-      escalate(why);
+      transcript.push(JSON.stringify({ tool: call.name, why, args: redactArgs(call.arguments) }));
+      escalate(why, "MODEL_ESCALATE");
       break;
     }
 
@@ -148,13 +177,23 @@ export const discover = async (input: DiscoverInput): Promise<DiscoverOutput> =>
     lastAction = sig;
 
     await input.adapter.act({ action, target: chain, value: rawValue });
+    if (action === "extract" && chain) {
+      const extracted = await input.adapter.extract(chain).catch(() => undefined);
+      if (extracted?.text) extractedValues.push(extracted.text);
+    }
     const url = await input.adapter.url();
     const pathname = new URL(url).pathname;
     const leaked = Object.values(input.values).some((v) => v && pathname.includes(v));
     const changed = url !== obs.url;
     history.push(`${call.name}: ${why}`);
     history.push(changed ? `page: url changed to ${leaked ? "[redacted]" : pathname}` : "page: unchanged — do a different action");
-    transcript.push(JSON.stringify({ tool: call.name, why, args: { ...call.arguments, paramRef, value: paramRef ? undefined : call.arguments.value } }));
+    transcript.push(
+      JSON.stringify({
+        tool: call.name,
+        why,
+        args: redactArgs({ ...call.arguments, paramRef, value: paramRef ? undefined : call.arguments.value }),
+      }),
+    );
 
     const waitFor =
       changed && !leaked
@@ -176,13 +215,14 @@ export const discover = async (input: DiscoverInput): Promise<DiscoverOutput> =>
   }
 
   const profile = mockBankProfile();
-  const clickIndex = steps.findIndex((s) => s.action === "click");
-  const afterStep = clickIndex >= 0 ? clickIndex : Math.max(0, steps.length - 1);
-  const complete = isDiscoverComplete(steps, finished);
+  const compiled = compileDiscoveredSteps({ goal: input.goal, steps, profile });
+  const clickIndex = compiled.steps.findIndex((s) => s.action === "click");
+  const afterStep = clickIndex >= 0 ? clickIndex : Math.max(0, compiled.steps.length - 1);
+  const complete = isDiscoverComplete(compiled.steps, finished);
   const capability: Capability = {
     schemaVersion: "1.0.0",
-    id: `lookup-savings-${hash(input.goal).slice(0, 6)}`,
-    name: "lookup_savings_balance",
+    id: compiled.id,
+    name: compiled.name,
     description: input.goal,
     revision: 1,
     status: complete ? "approved" : "draft",
@@ -191,37 +231,22 @@ export const discover = async (input: DiscoverInput): Promise<DiscoverOutput> =>
       discoveryRunId: randomUUID(),
       modelId: input.modelId,
       createdAt: new Date().toISOString(),
-      sourceHash: hash(JSON.stringify(steps)),
+      sourceHash: hash(JSON.stringify(compiled.steps)),
     },
     riskClass: "reversible",
     policy: input.policy.snapshot(),
     parameters: input.params,
-    outputs: [{ name: "savingsBalance", type: "string", sensitivity: "none", description: "Current savings balance" }],
+    outputs: compiled.outputs,
     entry: profile.entry,
-    steps,
-    outcomeDetectors: profile.errorPatterns
-      .filter((p) =>
-        ["MEMBER_NOT_FOUND", "PERMISSION_DENIED", "ACCOUNT_FROZEN", "ESTATE_HOLD", "VALIDATION_FAILED"].includes(p.code),
-      )
-      .map((p) => ({
-        afterStep,
-        locator: {
-          candidates: [{ strategy: "text" as const, text: p.pattern, weak: false }],
-          fingerprint: { name: p.pattern, candidateCount: 1, framePath: [] as string[] },
-          framePath: [] as string[],
-        },
-        pattern: p.pattern,
-        outcome: p.code,
-      })),
-    success: { kind: "text", value: "Savings balance" },
-    knownOutcomes: [
-      { code: "MEMBER_NOT_FOUND", description: "No member exists for the supplied ID" },
-      { code: "PERMISSION_DENIED", description: "Operator is not allowed to view this record" },
-      { code: "ACCOUNT_FROZEN", description: "Fraud or operational freeze blocks servicing" },
-      { code: "ESTATE_HOLD", description: "Deceased member — supervisor and letters required" },
-      { code: "VALIDATION_FAILED", description: "Member ID failed field validation" },
-    ],
+    steps: compiled.steps,
+    outcomeDetectors: detectorsFromProfile(profile, afterStep),
+    success: compiled.success,
+    knownOutcomes: knownOutcomesFromProfile(profile),
   };
+  if (intervention) {
+    intervention.capabilityId = capability.id;
+    intervention.url = await input.adapter.url().catch(() => undefined);
+  }
 
-  return { capability, events, transcript };
+  return { capability, events, transcript, llmTurns, intervention };
 };

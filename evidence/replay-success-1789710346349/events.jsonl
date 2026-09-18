@@ -1,0 +1,3 @@
+{"at":"2026-09-18T05:45:46.626Z","kind":"step_ok","stepIndex":0,"why":"Enter the member identifier into the lookup field"}
+{"at":"2026-09-18T05:45:46.777Z","kind":"step_ok","stepIndex":1,"why":"Submit the member search"}
+{"at":"2026-09-18T05:45:46.792Z","kind":"step_ok","stepIndex":2,"why":"Read the current savings balance from the member record"}

@@ -9,10 +9,11 @@
     "discover": "pnpm --filter @cur/cli discover",
     "replay": "pnpm --filter @cur/cli replay",
     "serve": "pnpm --filter @cur/cli serve",
-    "test": "vitest run",
+    "test": "pnpm typecheck && vitest run",
     "test:watch": "vitest",
     "schemas": "tsx packages/schema/src/generate.ts",
-    "evidence": "tsx scripts/write-evidence.ts",
+    "evidence": "tsx scripts/write-evidence.ts && tsx scripts/sync-worker-evidence.ts",
+    "sync:worker": "tsx scripts/sync-worker-evidence.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { chatReplay } from "./chat.js";
-import { CASES, HANDS, POLICY, recordedReplay } from "./cases.js";
+import { CASES, HANDS, POLICY, isChaos, recordedChaos, recordedReplay } from "./cases.js";
+import { TENANTS, canonicalize, checkPolicy, gateIrreversible, generatePlaywrightSpec, validateCapability } from "./logic.js";
+import { Capability } from "@cur/schema";
 
 export type Env = {
   SESSION: DurableObjectNamespace;
@@ -94,13 +96,15 @@ app.get("/api/health", async (c) => {
   });
 });
 
-app.get("/api/capability", (c) =>
-  c.json({
+app.get("/api/capability", async (c) => {
+  const full = await readEvidenceJson(c.env, "capabilities/lookup-savings-balance.json");
+  if (full) return c.json(full);
+  return c.json({
     id: "lookup-savings-balance",
     status: "approved",
     description: "Look up a member and read their current savings balance",
-  }),
-);
+  });
+});
 
 app.get("/api/cases", (c) => c.json({ mode: "recorded-fallback", cases: CASES }));
 
@@ -114,25 +118,92 @@ app.get("/api/integration", (c) =>
     cases: CASES,
     invoke: "POST /api/replay",
     chat: "POST /api/chat",
+    liveLogic: ["POST /api/policy/check", "POST /api/policy/gate", "POST /api/capability/validate", "GET /api/capability/codegen", "POST /api/canonicalize"],
+    recorded: ["GET /api/evidence/manifest.json", "GET /api/evidence/*", "GET /api/stability"],
     llm: Boolean(c.env.ZAI_API_KEY || c.env.VENICE_API_KEY || c.env.OPENAI_API_KEY),
     llmProvider: c.env.LLM_PROVIDER ?? (c.env.ZAI_API_KEY ? "zai" : undefined),
     llmModel: c.env.LLM_MODEL,
   }),
 );
 
-const gatedReplay = async (c: { env: Env; req: { url: string; json: <T>() => Promise<T>; header: (n: string) => string | undefined } }, memberId?: string, token?: string) => {
+type ReplayBody = { memberId?: string; turnstileToken?: string; chaos?: string };
+
+const gatedReplay = async (
+  c: { env: Env; req: { url: string; json: <T>() => Promise<T>; header: (n: string) => string | undefined } },
+  memberId?: string,
+  token?: string,
+  chaos?: string,
+) => {
   if (c.env.DEMO_ENABLED === "false") {
     return { status: 503 as const, body: { error: "demo disabled", mode: "kill-switch-recorded" } };
   }
   const ok = await verifyTurnstile(token, c.env.TURNSTILE_SECRET_KEY, c.req.header("CF-Connecting-IP") ?? "");
   if (!ok) return { status: 403 as const, body: { error: "turnstile" } };
+  if (isChaos(chaos)) return { status: 200 as const, body: recordedChaos(chaos, memberId) };
   return { status: 200 as const, body: recordedReplay(memberId) };
 };
 
 app.post("/api/replay", async (c) => {
-  const body = await c.req.json<{ memberId?: string; turnstileToken?: string }>().catch(() => ({ memberId: "12345" }));
-  const out = await gatedReplay(c, body.memberId, body.turnstileToken);
+  const body = await c.req.json<ReplayBody>().catch((): ReplayBody => ({ memberId: "12345" }));
+  const out = await gatedReplay(c, body.memberId, body.turnstileToken, body.chaos);
   return c.json(out.body, out.status);
+});
+
+/** Live logic, no browser: the engine's PolicyGuard against a URL or action type. */
+app.post("/api/policy/check", async (c) => {
+  const body = await c.req.json<{ url?: string; action?: string }>().catch(() => ({}));
+  return c.json(checkPolicy(body));
+});
+
+/** Live logic, no browser: Zod validation of a capability artifact. */
+app.post("/api/capability/validate", async (c) => {
+  const raw = await c.req.json().catch(() => null);
+  return c.json(validateCapability(raw));
+});
+
+/** Live logic: the approval gate replay() applies before any irreversible act. */
+app.post("/api/policy/gate", async (c) => {
+  const body = await c.req.json<{ status?: "draft" | "approved"; confirmIrreversible?: boolean }>().catch(() => ({}));
+  return c.json(gateIrreversible(body));
+});
+
+/** Pure transform: Playwright spec from the committed capability. */
+app.get("/api/capability/codegen", async (c) => {
+  const raw = await readEvidenceJson(c.env, "capabilities/lookup-savings-balance.json");
+  const parsed = Capability.safeParse(raw);
+  if (!parsed.success) return c.json({ error: "capability not available" }, 404);
+  return c.text(generatePlaywrightSpec(parsed.data), 200, { "content-type": "text/plain; charset=utf-8" });
+});
+
+app.post("/api/canonicalize", async (c) => {
+  const body = await c.req.json<{ url?: string; values?: Record<string, string> }>().catch(() => ({}));
+  return c.json(canonicalize(body.url ?? "http://127.0.0.1:4177/member/12345", body.values ?? { memberId: "12345" }));
+});
+
+app.get("/api/tenants", (c) => c.json({ tenants: TENANTS, note: "TenantBinding is schema-only in v1; the variant replay is a design demonstration, not a recorded run." }));
+
+const readEvidenceJson = async (env: Env, path: string): Promise<unknown> => {
+  if (!env.ASSETS) return null;
+  const res = await env.ASSETS.fetch(new Request(`https://assets.local/evidence/${path}`));
+  if (!res.ok) return null;
+  return res.json();
+};
+
+/** Recorded evidence, served from the committed pack. */
+app.get("/api/evidence/*", async (c) => {
+  if (!c.env.ASSETS) return c.json({ error: "no assets" }, 404);
+  const rest = c.req.path.replace(/^\/api\/evidence\//, "");
+  const res = await c.env.ASSETS.fetch(new Request(`https://assets.local/evidence/${rest}`));
+  if (!res.ok) return c.json({ error: "not found", path: rest }, 404);
+  const headers = new Headers(res.headers);
+  headers.set("cache-control", "public, max-age=300");
+  return new Response(res.body, { status: 200, headers });
+});
+
+app.get("/api/stability", async (c) => {
+  const data = await readEvidenceJson(c.env, "stability.json");
+  if (!data) return c.json({ error: "stability not recorded" }, 404);
+  return c.json(data);
 });
 
 app.post("/api/chat", async (c) => {

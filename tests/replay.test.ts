@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { Capability } from "@cur/schema";
 import { discover, FakeLlm, inferFramePath, lookupBalanceScript, replay, seedLookupBalance } from "@cur/engine";
 import { makeAdapter, startBank } from "./helpers.js";
 
@@ -32,6 +33,54 @@ describe("replay + discover", () => {
       expect(out.capability.status).toBe("approved");
       expect(JSON.stringify(out.capability)).not.toContain("12345");
       expect(out.capability.steps.some((s) => s.input?.kind === "paramRef" && s.input.param === "memberId")).toBe(true);
+      expect(out.capability.outputs.every((o) => out.capability.steps.some((s) => s.outputName === o.name) || o.name)).toBe(true);
+      expect(out.capability.steps.filter((s) => s.action === "extract")).toHaveLength(1);
+      expect(out.llmTurns.length).toBeGreaterThan(0);
+    } finally {
+      await adapter.close();
+    }
+  });
+
+  it("compiles a messy extract loop into one declared output", async () => {
+    const { adapter, policy, session } = makeAdapter(bank.port);
+    try {
+      const out = await discover({
+        goal: "look up the member and read their current savings balance",
+        target: bank.url,
+        params: [{ name: "memberId", type: "string", required: true, sensitivity: "pii", description: "id" }],
+        values: { memberId: "12345" },
+        adapter,
+        llm: new FakeLlm([
+          ...lookupBalanceScript().slice(0, 2),
+          {
+            name: "extract",
+            arguments: {
+              role: "status",
+              name: "Savings balance",
+              outputName: "savings_balance",
+              why: "visible as $1,842.17",
+            },
+          },
+          {
+            name: "extract",
+            arguments: {
+              role: "status",
+              name: "Savings balance",
+              outputName: "savingsBalance",
+              why: "read again $1,842.17",
+            },
+          },
+          { name: "finish", arguments: { why: "done $1,842.17" } },
+        ]),
+        policy,
+        session,
+        modelId: "fake",
+      });
+      expect(out.capability.steps.filter((s) => s.action === "extract")).toHaveLength(1);
+      expect(out.capability.steps.some((s) => s.outputName === "savingsBalance")).toBe(true);
+      expect(out.capability.outputs.map((o) => o.name)).toEqual(["savingsBalance"]);
+      expect(JSON.stringify(out.capability)).not.toContain("1842");
+      expect(Capability.parse(out.capability).id.length).toBeGreaterThan(0);
     } finally {
       await adapter.close();
     }
@@ -228,9 +277,11 @@ describe("replay + discover", () => {
         policy,
         session,
         target: bank.url,
+        captureEvidence: true,
       });
       expect(result.status).toBe("failed");
       expect(result.failure?.code).toBe("TIMEOUT");
+      expect(result.failure?.evidenceRefs?.length).toBeGreaterThan(0);
     } finally {
       await adapter.close();
     }
@@ -399,6 +450,7 @@ describe("replay + discover", () => {
         pauseAfterStep: 0,
       });
       expect(paused.status).toBe("escalated");
+      expect(paused.intervention?.reason).toBe("PAUSE_AFTER_STEP");
       session.setOwner("human");
       const page = adapter.pageOrThrow();
       const box = await page.getByRole("button", { name: "Look up" }).boundingBox();
@@ -443,6 +495,7 @@ describe("replay + discover", () => {
         modelId: "fake",
       });
       expect(out.events.some((e) => e.kind === "escalation_requested")).toBe(true);
+      expect(out.intervention?.reason).toBe("MODEL_ESCALATE");
       expect(session.controlOwner).toBe("human");
       expect(out.capability.status).toBe("draft");
     } finally {

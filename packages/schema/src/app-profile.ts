@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Checkpoint, LocatorChain } from "./types.js";
+import { Checkpoint, LocatorChain, OutcomeCode } from "./types.js";
 
 export const InterstitialRule = z.object({
   id: z.string(),
@@ -20,7 +20,7 @@ export const AppProfile = z.object({
   interstitials: z.array(InterstitialRule).default([]),
   errorPatterns: z.array(
     z.object({
-      code: z.string(),
+      code: z.union([OutcomeCode, z.literal("TIMEOUT")]),
       pattern: z.string(),
     }),
   ).default([]),

@@ -2,7 +2,7 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { discover, FakeLlm, FileStore, lookupBalanceScript, PolicyGuard, replay, seedLookupBalance, Session, WebAdapter, loopbackPolicy } from "@cur/engine";
+import { createLiveLlm, discover, FakeLlm, FileStore, lookupBalanceScript, PolicyGuard, replay, seedLookupBalance, Session, WebAdapter, loopbackPolicy } from "@cur/engine";
 import { Capability } from "@cur/schema";
 import { startServe } from "./serve.js";
 
@@ -64,14 +64,9 @@ const runDiscover = async () => {
   const policy = new PolicyGuard(loopbackPolicy(port));
   const adapter = new WebAdapter({ policy, extraHeaders: chaosHeader() });
   const llmName = flag("llm", process.env.LLM_PROVIDER ?? "fake")!;
-  const llm =
-    llmName === "fake"
-      ? new FakeLlm(lookupBalanceScript())
-      : await (await import("@cur/engine")).createLiveLlm?.().catch(async () => {
-          const { createLiveLlm } = await import("../../packages/engine/src/live-llm.ts");
-          return createLiveLlm();
-        });
+  const llm = llmName === "fake" ? new FakeLlm(lookupBalanceScript()) : await createLiveLlm();
   const session = new Session();
+  const started = new Date().toISOString();
   try {
     const result = await discover({
       goal,
@@ -82,7 +77,7 @@ const runDiscover = async () => {
       llm,
       policy,
       session,
-      modelId: `${llmName}:${process.env.LLM_MODEL ?? "fake"}`,
+      modelId: llmName === "fake" ? "fake" : `${llmName}:${process.env.LLM_MODEL ?? "default"}`,
     });
     const cap = { ...result.capability, id: "lookup-savings-balance" };
     const store = new FileStore(evidenceRoot);
@@ -90,11 +85,16 @@ const runDiscover = async () => {
     const dir = `discovery-${cap.provenance.discoveryRunId.slice(0, 8)}`;
     await store.writeRun(dir, "capability.json", cap);
     await store.writeRun(dir, "steps.json", result.events);
-    await store.writeRun(
-      dir,
-      "transcript.redacted.jsonl",
-      result.transcript.join("\n") + "\n",
-    );
+    await store.writeRun(dir, "transcript.redacted.jsonl", `${result.transcript.join("\n")}\n`);
+    await store.writeRun(dir, "llm-turns.jsonl", `${result.llmTurns.map((t) => JSON.stringify(t)).join("\n")}\n`);
+    await store.writeRun(dir, "run.json", {
+      started,
+      finished: new Date().toISOString(),
+      steps: result.events.length,
+      status: cap.status,
+      modelId: cap.provenance.modelId,
+      intervention: result.intervention,
+    });
     writeFileSync(join(evidenceRoot, "capabilities", `${cap.id}.json`), `${JSON.stringify(cap, null, 2)}\n`);
     console.log(JSON.stringify({ ok: true, artifact: `evidence/capabilities/${cap.id}.json`, steps: result.events }, null, 2));
   } finally {
@@ -117,7 +117,8 @@ const runReplay = async () => {
   const { values } = parseParams();
   const port = Number(new URL(target!).port || 80);
   const policy = new PolicyGuard(loopbackPolicy(port));
-  const adapter = new WebAdapter({ policy, extraHeaders: chaosHeader() });
+  const withTrace = args.includes("--trace");
+  const adapter = new WebAdapter({ policy, extraHeaders: chaosHeader(), trace: withTrace });
   const session = new Session();
   const store = new FileStore(evidenceRoot);
   const dir = `replay-${Date.now()}`;
@@ -130,9 +131,16 @@ const runReplay = async () => {
       session,
       target: target!,
       confirmIrreversible: args.includes("--confirm-irreversible"),
+      store,
+      runDir: dir,
     });
+    if (withTrace) {
+      const tracePath = join(evidenceRoot, dir, "trace.zip");
+      await adapter.stopTrace(tracePath);
+      result.evidence.trace = `evidence/${dir}/trace.zip`;
+    }
     await store.writeResult(dir, result);
-    await store.writeRun(dir, "events.jsonl", result.events.map((e) => JSON.stringify(e)).join("\n") + "\n");
+    await store.writeRun(dir, "events.jsonl", `${result.events.map((e) => JSON.stringify(e)).join("\n")}\n`);
     console.log(JSON.stringify(result, null, 2));
   } finally {
     await adapter.close();

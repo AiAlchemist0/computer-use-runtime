@@ -1,8 +1,10 @@
 import type {
   ActionType,
   Capability,
+  CapabilityStep,
   Checkpoint,
   LocatorChain,
+  Parameter,
   RunResult,
 } from "@cur/schema";
 
@@ -32,7 +34,12 @@ export interface SurfaceAdapter {
   resolve(chain: LocatorChain): Promise<{ count: number; handleOk: boolean }>;
   act(req: ActRequest): Promise<void>;
   extract(chain: LocatorChain): Promise<ExtractResult>;
-  screenshot(opts?: { mask?: LocatorChain[] }): Promise<Buffer>;
+  screenshot(opts?: {
+    mask?: LocatorChain[];
+    values?: Record<string, string>;
+    parameters?: Parameter[];
+    steps?: CapabilityStep[];
+  }): Promise<Buffer>;
   waitFor(kind: "url" | "element" | "text" | "load", value?: string, timeoutMs?: number): Promise<void>;
   pause(): Promise<void>;
   injectHumanInput(kind: "click" | "type" | "press", payload: HumanPointer | { text?: string; key?: string }): Promise<void>;

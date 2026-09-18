@@ -47,23 +47,36 @@ export const Provenance = z.object({
 });
 export type Provenance = z.infer<typeof Provenance>;
 
-export const Capability = z.object({
-  schemaVersion: z.literal("1.0.0"),
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  revision: z.number().int().positive(),
-  status: z.enum(["draft", "approved"]),
-  appProfile: z.string(),
-  provenance: Provenance,
-  riskClass: RiskClass,
-  policy: PolicySnapshot,
-  parameters: z.array(Parameter),
-  outputs: z.array(OutputField),
-  entry: Checkpoint,
-  steps: z.array(CapabilityStep).min(1),
-  outcomeDetectors: z.array(OutcomeDetector).default([]),
-  success: Checkpoint,
-  knownOutcomes: z.array(KnownOutcome).default([]),
-});
+export const Capability = z
+  .object({
+    schemaVersion: z.literal("1.0.0"),
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    revision: z.number().int().positive(),
+    status: z.enum(["draft", "approved"]),
+    appProfile: z.string(),
+    provenance: Provenance,
+    riskClass: RiskClass,
+    policy: PolicySnapshot,
+    parameters: z.array(Parameter),
+    outputs: z.array(OutputField),
+    entry: Checkpoint,
+    steps: z.array(CapabilityStep).min(1),
+    outcomeDetectors: z.array(OutcomeDetector).default([]),
+    success: Checkpoint,
+    knownOutcomes: z.array(KnownOutcome).default([]),
+  })
+  .superRefine((cap, ctx) => {
+    const names = new Set(cap.outputs.map((o) => o.name));
+    cap.steps.forEach((s, i) => {
+      if (s.outputName && !names.has(s.outputName)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `outputName ${s.outputName} is not declared in outputs`,
+          path: ["steps", i, "outputName"],
+        });
+      }
+    });
+  });
 export type Capability = z.infer<typeof Capability>;

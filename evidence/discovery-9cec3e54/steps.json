@@ -1,0 +1,30 @@
+[
+  {
+    "action": "type",
+    "why": "Enter member number for lookup"
+  },
+  {
+    "action": "click",
+    "why": "Member ID is already entered; submit the lookup form to load the member record."
+  },
+  {
+    "action": "extract",
+    "why": "Member record is loaded; read the savings balance."
+  },
+  {
+    "action": "extract",
+    "why": "Read the member's current savings balance."
+  },
+  {
+    "action": "extract",
+    "why": "Read the member's current savings balance."
+  },
+  {
+    "action": "extract",
+    "why": "Read the member's current savings balance."
+  },
+  {
+    "action": "finish",
+    "why": "Savings balance [redacted:output] is visible on the member record page."
+  }
+]
