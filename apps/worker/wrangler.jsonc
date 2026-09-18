@@ -1,5 +1,6 @@
 {
   "name": "computer-use-runtime",
+  "account_id": "fd3c1d3bddf094ff49d409326ba2c2ee",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -21,6 +22,6 @@
   },
   "workers_dev": true,
   "routes": [
-    { "pattern": "interface.deanshev.com", "custom_domain": true }
+    { "pattern": "interface.deanshev.com", "custom_domain": true, "zone_name": "deanshev.com" }
   ]
 }
