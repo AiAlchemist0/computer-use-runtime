@@ -133,6 +133,9 @@ export const startServe = async (port: number) => {
   app.post("/api/session/:id/run", async (c) => {
     const live = lives.get(c.req.param("id"));
     if (!live) return c.json({ error: "not found" }, 404);
+    if (live.session.controlOwner !== "agent") {
+      return c.json({ error: "human owns the session; resume or wait for the idle timer", controlOwner: live.session.controlOwner }, 409);
+    }
     const body = await c.req.json<{ memberId?: string }>().catch(() => ({ memberId: "12345" }));
     live.memberId = body.memberId ?? "12345";
     const policy = new PolicyGuard(loopbackPolicy(bankPort));
@@ -183,11 +186,13 @@ export const startServe = async (port: number) => {
     const timer = live.session.releaseIfTimedOut();
     if (timer !== "ok") return c.json({ error: timer, controlOwner: live.session.controlOwner }, 409);
     const body = await c.req.json<{ nx: number; ny: number; viewport: { width: number; height: number } }>();
+    // Resolve what the human is about to hit before the click: the click may navigate and destroy the context.
+    const locator = await live.adapter.elementAtPoint(body.nx, body.ny, body.viewport).catch(() => null);
     await live.adapter.injectHumanInput("click", body);
     live.session.recordHuman();
-    const locator = await live.adapter.elementAtPoint(body.nx, body.ny, body.viewport);
-    live.lastJpeg = await maskedShot(live, bankPort);
-    return c.json({ recorded: { nx: body.nx, ny: body.ny, viewport: body.viewport, locator } });
+    await live.adapter.waitFor("load", undefined, 8000).catch(() => undefined);
+    live.lastJpeg = await maskedShot(live, bankPort).catch(() => live.lastJpeg);
+    return c.json({ recorded: { nx: body.nx, ny: body.ny, viewport: body.viewport, locator }, controlOwner: live.session.controlOwner });
   });
 
   app.post("/api/session/:id/resume", async (c) => {
