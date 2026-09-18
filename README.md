@@ -8,6 +8,27 @@ A capability runtime: an LLM discovers a flow on a live, hostile bank UI **once*
 - Long-form architecture: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · wired diagrams: [docs/DIAGRAMS.md](./docs/DIAGRAMS.md) · docs index: [docs/README.md](./docs/README.md)
 - Evidence: [evidence/INDEX.md](./evidence/INDEX.md)
 
+## Hosted demo (extra, not the graded artifact)
+
+- **Walkthrough:** [deanshev.com/interface](https://deanshev.com/interface) — three acts mapped to the assignment sections, with a rubric rail that lights up as you go.
+- **Runtime:** [interface.deanshev.com](https://interface.deanshev.com)
+
+The hosted Worker **never drives a browser**. What it runs live is the engine's own Chromium-free code — `PolicyGuard`, the Zod capability schema, Playwright codegen, route canonicalization — and it serves this repository's `/evidence` pack. Every panel is labeled **live logic**, **recorded evidence**, or **design**. Clone the repo for live discover, replay, and HITL.
+
+[![Three acts: discover once, replay many, hand off and resume](./docs/screenshots/01-hero.jpg)](https://deanshev.com/interface)
+
+| Act 1 · Discover once (§3.1) | Act 1 · The artifact (§3.2) |
+| --- | --- |
+| [![Discovery theatre: the live z.ai run turn by turn with provider response ids and the compile pass](./docs/screenshots/02-discovery-theatre.jpg)](https://deanshev.com/interface#discover) | [![Capability inspector with annotated schema and a live Zod validation that rejects an undeclared output](./docs/screenshots/03-artifact-inspector.jpg)](https://deanshev.com/interface#artifact) |
+
+| Act 2 · Replay many (§3.3, §8 agent catalog) | Act 2 · Guardrails (§3.4, §8 approval) |
+| --- | --- |
+| [![Agent tab invoking the capability with an injected timeout fault; RunResult shows failed / TIMEOUT with step, expected, observed](./docs/screenshots/04-agent-invoke-fault.jpg)](https://deanshev.com/interface#replay) | [![PolicyGuard sandbox: route denied, action denied, irreversible step gated until approved and confirmed](./docs/screenshots/05-policy-sandbox.jpg)](https://deanshev.com/interface#safety) |
+
+| Act 2 · Evidence (§3.5, §8 stability) | Act 3 · Hand off, resume (§3.6) |
+| --- | --- |
+| [![Evidence gallery: every recorded run with masked screenshots, traces, and the 10-run stability sparkline](./docs/screenshots/06-evidence-gallery.jpg)](https://deanshev.com/interface#evidence) | [![HITL storyboard: operator ticket, human click on the same Playwright frame, resume to success](./docs/screenshots/07-handoff-storyboard.jpg)](https://deanshev.com/interface#handoff) |
+
 ## Deliverables checklist
 
 Everything the assignment asks for, where it lives, and how to check it.
@@ -138,11 +159,4 @@ Screenshots mask declared PII. No member number or extracted value appears in an
 - `cli` — `discover` | `replay` | `serve`
 - `scripts` — `write-evidence.ts` (rebuilds `/evidence`), `sync-worker-evidence.ts`
 - `tests` — vitest suites
-- `docs` — architecture (25 sections), wired diagrams, index
-
-## Hosted demo (extra, not the graded artifact)
-
-- Walkthrough: [deanshev.com/interface](https://deanshev.com/interface) — three acts mapped to the assignment sections, with a rubric rail.
-- Runtime: [interface.deanshev.com](https://interface.deanshev.com)
-
-The hosted Worker **never drives a browser**. It runs the engine's own Chromium-free code live — `PolicyGuard`, the Zod capability schema, Playwright codegen, route canonicalization — and serves this repository's `/evidence` pack (discovery transcripts, replay results, masked screenshots, traces, the HITL session, stability). Every hosted panel is labeled live logic, recorded evidence, or design. Clone this repo for live discover, replay, and HITL.
+- `docs` — architecture (25 sections), wired diagrams, screenshots of the hosted walkthrough, index
