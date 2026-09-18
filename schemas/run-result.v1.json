@@ -38,6 +38,8 @@
       "enum": [
         "MEMBER_NOT_FOUND",
         "PERMISSION_DENIED",
+        "ACCOUNT_FROZEN",
+        "ESTATE_HOLD",
         "VALIDATION_FAILED",
         "SESSION_EXPIRED",
         "UNEXPECTED_DIALOG"

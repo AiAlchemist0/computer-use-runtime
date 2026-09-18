@@ -1,27 +1,89 @@
 :root {
-  color: #1b1b1b;
-  background: #f7f4ee;
-  font-family: Georgia, "Times New Roman", serif;
+  --desk: #0f1412;
+  --desk-2: #18201c;
+  --panel: #1c2621;
+  --line: #2f3d36;
+  --ink: #e8efe9;
+  --muted: #9aada3;
+  --brass: #d4b36a;
+  --ok: #7dcea0;
+  --warn: #e7c36a;
+  --bad: #e08a7a;
+  --teller-paper: #f3ead6;
+  --teller-nav: #24362c;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--desk);
 }
+* { box-sizing: border-box; }
 body { margin: 0; }
-main { max-width: 960px; margin: 0 auto; padding: 28px 20px 64px; }
-h1 { font-size: 28px; margin-bottom: 8px; }
-.row { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+.top {
+  display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
+  padding: 16px 22px; border-bottom: 1px solid var(--line); background: var(--desk-2);
+}
+.eyebrow { margin: 0 0 4px; color: var(--brass); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+h1 { margin: 0; font-size: 22px; font-weight: 600; }
+.lead { margin: 6px 0 0; color: var(--muted); font-size: 13px; max-width: 52ch; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  border: 1px solid var(--line); padding: 4px 9px; border-radius: 999px;
+  font-size: 12px; color: var(--muted); background: var(--panel);
+}
+.pill.live { color: var(--ok); border-color: #2f5a44; }
+.pill.human { color: var(--warn); border-color: #6a5a2a; }
+.stage {
+  display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 0; flex: 1; min-height: 0;
+}
+@media (max-width: 980px) { .stage { grid-template-columns: 1fr; } }
+.pane { display: flex; flex-direction: column; min-height: 0; }
+.pane.teller { background: #cfc4a8; color: #1c1914; }
+.pane.analyst { background: var(--desk); border-left: 1px solid var(--line); }
+.head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  padding: 12px 16px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.teller .head { background: var(--teller-nav); color: #f4efe4; }
+.analyst .head { background: var(--panel); color: var(--muted); }
+.body { padding: 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+.teller-frame {
+  width: 100%; min-height: 420px; border: 1px solid #8a7a55; background: var(--teller-paper);
+  display: block;
+}
+.teller-empty {
+  min-height: 420px; padding: 28px; background: var(--teller-paper);
+  border: 1px solid #8a7a55; font-family: "Times New Roman", Times, serif;
+}
+.teller-empty h2 { margin: 0 0 8px; font-size: 24px; }
+.teller-empty p { margin: 0 0 12px; color: #5c5344; }
+.grid { width: 100%; border-collapse: collapse; background: #fffdf6; }
+.grid td { border: 1px solid #8a7a55; padding: 8px 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cases { display: flex; flex-wrap: wrap; gap: 6px; }
+.cases button { font-size: 12px; padding: 6px 8px; }
 button, input {
-  font: inherit;
-  padding: 6px 10px;
+  font: inherit; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink);
 }
+button { cursor: pointer; }
+button:hover { border-color: var(--brass); }
+button.primary { background: #2a4638; border-color: #3d6a52; }
+button.ghost { background: transparent; }
+input { min-width: 120px; }
+.group { display: flex; flex-direction: column; gap: 8px; }
+.group h3 { margin: 0; font-size: 12px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+.summary {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+.stat { background: var(--panel); border: 1px solid var(--line); padding: 10px 12px; border-radius: 8px; }
+.stat b { display: block; font-size: 11px; color: var(--muted); font-weight: 500; }
+.stat span { font-size: 16px; }
+.stat.ok span { color: var(--ok); }
+.stat.bad span { color: var(--bad); }
+.stat.warn span { color: var(--warn); }
 pre {
-  background: #ece7dc;
-  padding: 12px;
-  overflow: auto;
-  min-height: 140px;
+  margin: 0; background: #101613; border: 1px solid var(--line); padding: 12px;
+  overflow: auto; min-height: 120px; max-height: 220px; font-size: 12px; color: #c5d4cb;
 }
-img.frame {
-  width: 100%;
-  border: 1px solid #bbb;
-  background: #ddd;
-  min-height: 200px;
-}
-.meta { color: #555; font-size: 14px; }
-.pill { display: inline-block; border: 1px solid #888; padding: 2px 8px; margin-right: 8px; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }

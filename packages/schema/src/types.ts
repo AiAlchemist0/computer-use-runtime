@@ -22,6 +22,8 @@ export type ActionType = z.infer<typeof ActionType>;
 export const OutcomeCode = z.enum([
   "MEMBER_NOT_FOUND",
   "PERMISSION_DENIED",
+  "ACCOUNT_FROZEN",
+  "ESTATE_HOLD",
   "VALIDATION_FAILED",
   "SESSION_EXPIRED",
   "UNEXPECTED_DIALOG",

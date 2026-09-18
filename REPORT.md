@@ -1,5 +1,7 @@
 # REPORT
 
+Short assignment write-up. Full design: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md). Wired diagrams: [docs/DIAGRAMS.md](./docs/DIAGRAMS.md). Index: [docs/README.md](./docs/README.md). Live maps: [deanshev.com/interface#wiring](https://deanshev.com/interface#wiring).
+
 ## 1. Architecture
 
 One Node/TypeScript engine runs in the CLI, in tests, and (optionally) in a Cloudflare Container. A `SurfaceAdapter` perceives and acts; a `PolicyGuard` sits in front of every act; a `Session` tracks who owns the live browser (`agent` | `human`). Discover uses an LLM only to pick tools. Replay never calls a model.

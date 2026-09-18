@@ -1,37 +1,6 @@
 import { Hono } from "hono";
-
-const seededSuccess = {
-  schemaVersion: "1.0.0",
-  runId: "evidence-replay-success",
-  capabilityId: "lookup-savings-balance",
-  status: "success",
-  outputs: { savingsBalance: "$1,842.17" },
-  events: [{ at: "2026-09-17T00:00:00.000Z", kind: "step_ok", why: "recorded from evidence/INDEX.md success replay" }],
-  driftWarnings: [],
-  evidence: { screenshots: [] },
-};
-
-const seededNotFound = {
-  schemaVersion: "1.0.0",
-  runId: "evidence-replay-not-found",
-  capabilityId: "lookup-savings-balance",
-  status: "business_outcome",
-  outcome: "MEMBER_NOT_FOUND",
-  events: [{ at: "2026-09-17T00:00:00.000Z", kind: "step_ok", why: "recorded from evidence/INDEX.md MEMBER_NOT_FOUND replay" }],
-  driftWarnings: [],
-  evidence: { screenshots: [] },
-};
-
-const seededDenied = {
-  schemaVersion: "1.0.0",
-  runId: "evidence-replay-permission",
-  capabilityId: "lookup-savings-balance",
-  status: "business_outcome",
-  outcome: "PERMISSION_DENIED",
-  events: [{ at: "2026-09-17T00:00:00.000Z", kind: "step_ok", why: "recorded from evidence/INDEX.md PERMISSION_DENIED replay" }],
-  driftWarnings: [],
-  evidence: { screenshots: [] },
-};
+import { cors } from "hono/cors";
+import { CASES, HANDS, POLICY, recordedReplay } from "./cases.js";
 
 export type Env = {
   SESSION: DurableObjectNamespace;
@@ -85,13 +54,20 @@ const verifyTurnstile = async (token: string | undefined, secret: string | undef
   return json.success === true;
 };
 
-const recordedReplay = (memberId?: string) => {
-  if (memberId === "88888") return seededDenied;
-  if (memberId && memberId !== "12345") return seededNotFound;
-  return seededSuccess;
-};
-
 const app = new Hono<{ Bindings: Env }>();
+
+app.use(
+  "*",
+  cors({
+    origin: [
+      "https://deanshev.com",
+      "https://www.deanshev.com",
+      "https://interface.deanshev.com",
+    ],
+    allowMethods: ["GET", "POST", "OPTIONS"],
+    allowHeaders: ["Content-Type"],
+  }),
+);
 
 app.get("/api/health", async (c) => {
   const enabled = c.env.DEMO_ENABLED !== "false";
@@ -114,24 +90,27 @@ app.get("/api/capability", (c) =>
   }),
 );
 
+app.get("/api/cases", (c) => c.json({ mode: "recorded-fallback", cases: CASES }));
+
+app.get("/api/integration", (c) =>
+  c.json({
+    mode: c.env.DEMO_ENABLED === "false" ? "kill-switch-recorded" : "recorded-fallback",
+    capabilityId: "lookup-savings-balance",
+    description: "Look up a member and read their current savings balance",
+    hands: HANDS,
+    policy: POLICY,
+    cases: CASES,
+    invoke: "POST /api/replay",
+  }),
+);
+
 const gatedReplay = async (c: { env: Env; req: { url: string; json: <T>() => Promise<T>; header: (n: string) => string | undefined } }, memberId?: string, token?: string) => {
   if (c.env.DEMO_ENABLED === "false") {
     return { status: 503 as const, body: { error: "demo disabled", mode: "kill-switch-recorded" } };
   }
   const ok = await verifyTurnstile(token, c.env.TURNSTILE_SECRET_KEY, c.req.header("CF-Connecting-IP") ?? "");
   if (!ok) return { status: 403 as const, body: { error: "turnstile" } };
-  const id = c.env.SESSION.idFromName("singleton");
-  const stub = c.env.SESSION.get(id);
-  const locked = await stub.fetch(new URL("/lock", c.req.url), { method: "POST" });
-  if (locked.status === 429) {
-    const reason = await locked.json().catch(() => ({ reason: "busy" }));
-    return { status: 429 as const, body: reason };
-  }
-  try {
-    return { status: 200 as const, body: recordedReplay(memberId) };
-  } finally {
-    await stub.fetch(new URL("/unlock", c.req.url), { method: "POST" });
-  }
+  return { status: 200 as const, body: recordedReplay(memberId) };
 };
 
 app.post("/api/replay", async (c) => {

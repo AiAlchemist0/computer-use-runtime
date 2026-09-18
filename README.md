@@ -2,7 +2,43 @@
 
 A capability runtime: an LLM discovers a flow on a live UI once, the run is compiled into a typed artifact, and production replay invokes that artifact **with no model in the decision loop**. When replay cannot safely continue, a human takes over the **same** browser session.
 
-This is the public take-home for interface.ai Assignment A. Clone this repo. Do not need Cloudflare or Supabase to evaluate it.
+This is the public take-home for interface.ai Assignment A. Clone this repo. You do not need Cloudflare or Supabase to evaluate it.
+
+**Architecture:** [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · **Wired diagrams:** [docs/DIAGRAMS.md](./docs/DIAGRAMS.md) · [docs index](./docs/README.md)
+
+## Architecture wiring
+
+Record once. Replay many. The model is not in the production loop. The public briefing draws the same maps at [deanshev.com/interface#wiring](https://deanshev.com/interface#wiring).
+
+```mermaid
+flowchart LR
+  subgraph author["Author once"]
+    LLM["DiscoverLlm"] --> Disc["discover()"]
+    Disc --> Cap["Capability JSON"]
+  end
+  subgraph invoke["Invoke many"]
+    Call["POST /api/replay\n{ memberId }"] --> Rep["replay() — no LLM"]
+    Cap --> Rep
+    Rep --> Adp["WebAdapter + PolicyGuard"]
+    Adp --> Bank["MockCore 127.0.0.1"]
+    Rep --> Out["RunResult"]
+  end
+  subgraph handoff["When replay must not guess"]
+    Out -->|"escalated"| HITL["same Playwright session"]
+    HITL -->|"nx/ny click"| Adp
+  end
+```
+
+```mermaid
+flowchart TB
+  Brief["deanshev.com/interface"] -->|"GET /api/integration"| W["Worker"]
+  Brief -->|"POST /api/replay"| W
+  W --> Rec["recorded-fallback\nsame hands + policy"]
+  Local["pnpm serve"] --> Eng["@cur/engine"]
+  Eng --> Chrome["live Chromium + HITL"]
+```
+
+Hands on the core: `type` textbox **Member ID** → `click` button **Look up** → `extract` status **Savings balance**. Full connection maps: [docs/DIAGRAMS.md](./docs/DIAGRAMS.md).
 
 ## Setup
 
@@ -47,7 +83,7 @@ pnpm serve
 
 `pnpm serve` starts its own mock bank (localhost, console port + 1). You do not need the Terminal 1 `pnpm bank` process for the console.
 
-Open `http://127.0.0.1:8787`. **Replay until handoff** types the member id, then pauses. Click Look up in the frame (`nx`/`ny`). Resume continues extract on the same session.
+Open `http://127.0.0.1:8787`. **Replay until handoff** types the Member ID, then pauses. Click Look up in the frame (`nx`/`ny`). Resume continues extract on the same session.
 
 ## Run without live services
 
@@ -72,6 +108,7 @@ A weak or poorly prompted model may loop on `type` and leave a **draft**. That i
 
 ## Layout
 
+- `docs/` — architecture, wired diagrams, TOC, trade-offs
 - `packages/schema` — Zod 4 capability / result contracts; JSON Schema in `/schemas`
 - `packages/engine` — Playwright adapter, policy, discover, replay, HITL session
 - `apps/bank` — hostile mock core (tables, iframe, no test IDs), localhost only
@@ -80,7 +117,7 @@ A weak or poorly prompted model may loop on `type` and leave a **draft**. That i
 - `cli` — `discover` | `replay` | `serve`
 - `evidence/` — fake-LLM discovery, success replay, not-found + `trace.zip`, HITL session
 - `apps/worker/SPIKE.md` — hosted Container go/no-go; recorded fallback is the live default
-- `REPORT.md` — design write-up
+- `REPORT.md` — short assignment write-up (full design is in `docs/`)
 
 ## Hosted demo (extra)
 

@@ -198,7 +198,9 @@ export const discover = async (input: DiscoverInput): Promise<DiscoverOutput> =>
     entry: profile.entry,
     steps,
     outcomeDetectors: profile.errorPatterns
-      .filter((p) => ["MEMBER_NOT_FOUND", "PERMISSION_DENIED", "VALIDATION_FAILED"].includes(p.code))
+      .filter((p) =>
+        ["MEMBER_NOT_FOUND", "PERMISSION_DENIED", "ACCOUNT_FROZEN", "ESTATE_HOLD", "VALIDATION_FAILED"].includes(p.code),
+      )
       .map((p) => ({
         afterStep,
         locator: {
@@ -213,6 +215,8 @@ export const discover = async (input: DiscoverInput): Promise<DiscoverOutput> =>
     knownOutcomes: [
       { code: "MEMBER_NOT_FOUND", description: "No member exists for the supplied ID" },
       { code: "PERMISSION_DENIED", description: "Operator is not allowed to view this record" },
+      { code: "ACCOUNT_FROZEN", description: "Fraud or operational freeze blocks servicing" },
+      { code: "ESTATE_HOLD", description: "Deceased member — supervisor and letters required" },
       { code: "VALIDATION_FAILED", description: "Member ID failed field validation" },
     ],
   };

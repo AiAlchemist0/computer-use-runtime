@@ -99,6 +99,53 @@ describe("replay + discover", () => {
     }
   });
 
+  it("replays joint, new-member, and thin-savings extracts", async () => {
+    for (const [id, expectBalance] of [
+      ["22222", /24,610/],
+      ["33440", /\$0\.00/],
+      ["55667", /42\.11/],
+    ] as const) {
+      const { adapter, policy, session } = makeAdapter(bank.port);
+      try {
+        const result = await replay({
+          capability: seedLookupBalance(bank.port),
+          values: { memberId: id },
+          adapter,
+          policy,
+          session,
+          target: bank.url,
+        });
+        expect(result.status).toBe("success");
+        expect(result.outputs?.savingsBalance).toMatch(expectBalance);
+      } finally {
+        await adapter.close();
+      }
+    }
+  });
+
+  it("returns ACCOUNT_FROZEN and ESTATE_HOLD as business outcomes", async () => {
+    for (const [id, outcome] of [
+      ["66778", "ACCOUNT_FROZEN"],
+      ["77889", "ESTATE_HOLD"],
+    ] as const) {
+      const { adapter, policy, session } = makeAdapter(bank.port);
+      try {
+        const result = await replay({
+          capability: seedLookupBalance(bank.port),
+          values: { memberId: id },
+          adapter,
+          policy,
+          session,
+          target: bank.url,
+        });
+        expect(result.status).toBe("business_outcome");
+        expect(result.outcome).toBe(outcome);
+      } finally {
+        await adapter.close();
+      }
+    }
+  });
+
   it("returns PERMISSION_DENIED as a business outcome", async () => {
     const { adapter, policy, session } = makeAdapter(bank.port);
     try {

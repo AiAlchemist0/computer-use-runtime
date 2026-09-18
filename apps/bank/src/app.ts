@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
-import { findMember, getSession, type ChaosKind } from "./store.js";
+import { CASES, findMember, getSession, type ChaosKind } from "./store.js";
 import { layout, searchPage, resultPage, panePage, confirmPage, notice } from "./pages.js";
+
+const queue = () => CASES.map((c) => ({ ticket: c.ticket, id: c.id, reason: c.reason }));
+const lookup = (error?: string) => searchPage(error, queue());
 
 export type BankEnv = {
   Variables: { sid: string; chaos: ChaosKind };
@@ -40,9 +43,9 @@ export const createBankApp = () => {
 
   app.get("/", (c) => {
     if (c.get("chaos") === "dialog") {
-      return c.html(layout("Notice", notice("System maintenance window.", true) + searchPage()));
+      return c.html(layout("Notice", notice("System maintenance window.", true) + lookup()));
     }
-    return c.html(layout("Member lookup", searchPage()));
+    return c.html(layout("Member lookup", lookup()));
   });
 
   app.post("/lookup", async (c) => {
@@ -58,17 +61,17 @@ export const createBankApp = () => {
       return c.html(layout("Expired", notice("Session expired. Sign in again.")));
     }
     if (chaos === "validation" || !/^\d{5}$/.test(memberId)) {
-      return c.html(layout("Lookup", searchPage("Member ID must be 5 digits.")));
+      return c.html(layout("Lookup", lookup("Member ID must be 5 digits.")));
     }
     if (chaos === "not_found") {
-      return c.html(layout("Lookup", searchPage("No such member.")));
+      return c.html(layout("Lookup", lookup("No such member.")));
     }
     const member = findMember(memberId);
     if (!member) {
-      return c.html(layout("Lookup", searchPage("No such member.")));
+      return c.html(layout("Lookup", lookup("No such member.")));
     }
-    if (chaos === "permission" || member.restricted) {
-      return c.html(layout("Lookup", searchPage("Permission denied.")));
+    if (chaos === "permission" || member.restricted || member.block) {
+      return c.html(layout("Lookup", lookup(member.block?.message ?? "Permission denied.")));
     }
     session.opened.add(member.id);
     return c.redirect(`/member/${member.id}`);
@@ -76,28 +79,42 @@ export const createBankApp = () => {
 
   app.get("/member/:id", (c) => {
     const member = findMember(c.req.param("id"));
-    if (!member) return c.html(layout("Lookup", searchPage("No such member.")));
-    if (c.get("chaos") === "permission" || member.restricted) {
-      return c.html(layout("Lookup", searchPage("Permission denied.")));
+    if (!member) return c.html(layout("Lookup", lookup("No such member.")));
+    if (c.get("chaos") === "permission" || member.restricted || member.block) {
+      return c.html(layout("Lookup", lookup(member.block?.message ?? "Permission denied.")));
     }
     return c.html(layout(`Member ${member.id}`, resultPage(member)));
   });
 
   app.get("/member/:id/pane", (c) => {
     const member = findMember(c.req.param("id"));
-    if (!member) return c.html(panePage({ id: "00000", name: "Unknown", savings: "—" }));
+    if (!member)
+      return c.html(
+        panePage({
+          id: "00000",
+          name: "Unknown",
+          savings: "—",
+          relationship: "—",
+          product: "—",
+          branch: "—",
+          opened: "—",
+          lastSeen: "—",
+          status: "—",
+          scenario: "Unknown",
+        }),
+      );
     return c.html(panePage(member));
   });
 
   app.post("/member/:id/sub-account", (c) => {
     const member = findMember(c.req.param("id"));
-    if (!member) return c.html(layout("Lookup", searchPage("No such member.")));
+    if (!member) return c.html(layout("Lookup", lookup("No such member.")));
     return c.html(layout("Confirm sub-account", confirmPage(member)));
   });
 
   app.post("/member/:id/sub-account/confirm", (c) => {
     const member = findMember(c.req.param("id"));
-    if (!member) return c.html(layout("Lookup", searchPage("No such member.")));
+    if (!member) return c.html(layout("Lookup", lookup("No such member.")));
     getSession(c.get("sid")).opened.add(`sub-${member.id}`);
     return c.html(layout("Confirmed", notice(`Sub-account opened for member ${member.id}.`)));
   });

@@ -73,12 +73,16 @@ export const seedLookupBalance = (port: number): Capability => ({
   outcomeDetectors: [
     { afterStep: 1, locator: textChain("No such member"), pattern: "No such member", outcome: "MEMBER_NOT_FOUND" },
     { afterStep: 1, locator: textChain("Permission denied"), pattern: "Permission denied", outcome: "PERMISSION_DENIED" },
+    { afterStep: 1, locator: textChain("Account is frozen"), pattern: "Account is frozen", outcome: "ACCOUNT_FROZEN" },
+    { afterStep: 1, locator: textChain("Estate hold"), pattern: "Estate hold", outcome: "ESTATE_HOLD" },
     { afterStep: 1, locator: textChain("Member ID must be"), pattern: "Member ID must be", outcome: "VALIDATION_FAILED" },
   ],
   success: { kind: "text", value: "Savings balance" },
   knownOutcomes: [
     { code: "MEMBER_NOT_FOUND", description: "No member exists for the supplied ID" },
     { code: "PERMISSION_DENIED", description: "Operator is not allowed to view this record" },
+    { code: "ACCOUNT_FROZEN", description: "Fraud or operational freeze blocks servicing" },
+    { code: "ESTATE_HOLD", description: "Deceased member — supervisor and letters required" },
     { code: "VALIDATION_FAILED", description: "Member ID failed field validation" },
   ],
 });

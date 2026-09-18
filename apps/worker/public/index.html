@@ -3,50 +3,194 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Capability runtime — recorded replay</title>
+  <title>MockCore · teller and analyst desk</title>
   <style>
-    body { font-family: Georgia, "Times New Roman", serif; margin: 32px; max-width: 760px; color: #1b1b1b; background: #f7f4ee; }
-    button, input { font: inherit; padding: 6px 10px; margin-right: 8px; }
-    pre { background: #ece7dc; padding: 12px; overflow: auto; min-height: 160px; }
-    .pill { display: inline-block; border: 1px solid #888; padding: 2px 8px; margin: 0 8px 8px 0; }
-    .note { background: #f3ead2; border: 1px solid #c9b57a; padding: 12px 14px; }
-    a { color: #1b3a2a; }
+    :root {
+      --desk: #0f1412; --desk-2: #18201c; --panel: #1c2621; --line: #2f3d36;
+      --ink: #e8efe9; --muted: #9aada3; --brass: #d4b36a; --ok: #7dcea0;
+      --warn: #e7c36a; --bad: #e08a7a; --paper: #f3ead6; --nav: #24362c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--desk); }
+    .app { min-height: 100vh; display: flex; flex-direction: column; }
+    .top { display: flex; justify-content: space-between; gap: 16px; padding: 16px 22px; background: var(--desk-2); border-bottom: 1px solid var(--line); }
+    .eyebrow { margin: 0 0 4px; color: var(--brass); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: 22px; font-weight: 600; }
+    .lead { margin: 6px 0 0; color: var(--muted); font-size: 13px; max-width: 56ch; }
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+    .pill { border: 1px solid var(--line); padding: 4px 9px; border-radius: 999px; font-size: 12px; color: var(--muted); background: var(--panel); }
+    .note { margin: 0; max-width: 36ch; color: var(--muted); font-size: 12px; }
+    .note a { color: var(--brass); }
+    .stage { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr); flex: 1; }
+    @media (max-width: 980px) { .stage { grid-template-columns: 1fr; } .top { flex-direction: column; } }
+    .pane { display: flex; flex-direction: column; min-height: 0; }
+    .teller { background: #cfc4a8; color: #1c1914; }
+    .analyst { background: var(--desk); border-left: 1px solid var(--line); }
+    .head { padding: 12px 16px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .teller .head { background: var(--nav); color: #f4efe4; }
+    .analyst .head { background: var(--panel); color: var(--muted); }
+    .body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .core {
+      min-height: 420px; padding: 28px; background: var(--paper); border: 1px solid #8a7a55;
+      font-family: "Times New Roman", Times, serif;
+    }
+    .core h2 { margin: 0 0 8px; font-size: 26px; }
+    .core .meta { margin: 0 0 16px; color: #5c5344; }
+    .grid { width: 100%; border-collapse: collapse; background: #fffdf6; }
+    .grid td { border: 1px solid #8a7a55; padding: 8px 12px; }
+    .alert { color: #7a1f1f; font-weight: bold; }
+    .ok { color: #24362c; font-weight: bold; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    button, input { font: inherit; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+    button { cursor: pointer; }
+    button.primary { background: #2a4638; border-color: #3d6a52; }
+    button.ghost { background: transparent; }
+    .group h3 { margin: 0 0 8px; font-size: 12px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+    .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat { background: var(--panel); border: 1px solid var(--line); padding: 10px 12px; border-radius: 8px; }
+    .stat b { display: block; font-size: 11px; color: var(--muted); font-weight: 500; }
+    .stat span { font-size: 16px; }
+    .stat.good span { color: var(--ok); }
+    .stat.bad span { color: var(--bad); }
+    .stat.warn span { color: var(--warn); }
+    pre { margin: 0; background: #101613; border: 1px solid var(--line); padding: 12px; overflow: auto; min-height: 120px; max-height: 240px; font-size: 12px; color: #c5d4cb; }
+    .hint { font-size: 12px; color: var(--muted); margin: 0; }
   </style>
 </head>
 <body>
-  <h1>Capability runtime</h1>
-  <p class="note">
-    This hosted page is <strong>recorded-fallback replay</strong> of the approved
-    <code>lookup_savings_balance</code> capability. It does not launch Chromium and does not take over a live browser.
-    Clone the repo and run <code>pnpm serve</code> for discover, live replay, and same-session HITL.
-  </p>
-  <p>
-    <span class="pill">mode recorded-fallback</span>
-    <a href="https://github.com/AiAlchemist0/computer-use-runtime">repo</a>
-    · <a href="https://github.com/AiAlchemist0/computer-use-runtime/blob/main/REPORT.md">REPORT.md</a>
-    · <a href="https://github.com/AiAlchemist0/computer-use-runtime/tree/main/evidence">/evidence</a>
-  </p>
-  <p>
-    <input id="member" value="12345" aria-label="Member ID" />
-    <button id="replay">Replay 12345</button>
-    <button id="missing">Replay not-found</button>
-    <button id="denied">Replay permission</button>
-  </p>
-  <pre id="out">Ready. Default path is replay of the seeded approved capability.</pre>
+  <div class="app">
+    <header class="top">
+      <div>
+        <p class="eyebrow">MockCore · two-persona desk</p>
+        <h1>Teller core and analyst desk</h1>
+        <p class="lead">Left is what a branch operator sees in the legacy core. Right is the finance desk replaying the approved capability — no live Chromium on this host.</p>
+      </div>
+      <div class="pills">
+        <span class="pill">mode recorded-fallback</span>
+        <p class="note">Clone the <a href="https://github.com/AiAlchemist0/computer-use-runtime">repo</a> and run <code>pnpm serve</code> for the live teller window, discover, and HITL. <a href="https://github.com/AiAlchemist0/computer-use-runtime/tree/main/evidence">evidence</a></p>
+      </div>
+    </header>
+    <div class="stage">
+      <section class="pane teller">
+        <div class="head">Bank user · teller / member servicing</div>
+        <div class="body">
+          <div class="core" id="core"></div>
+          <p class="hint">The live core stays on 127.0.0.1. This pane reconstructs the teller screen from the recorded run so you can see the member outcome without a browser takeover.</p>
+        </div>
+      </section>
+      <section class="pane analyst">
+        <div class="head">Analyst / finance desk</div>
+        <div class="body">
+          <div class="group">
+            <h3>Readable cases</h3>
+            <div class="actions" id="readable"></div>
+            <h3>Blocked / exception cases</h3>
+            <div class="actions" id="blocked"></div>
+            <input id="member" value="12345" aria-label="Member under review" />
+            <p class="hint" id="caseHint">Pick a walk-in from this morning’s book, then replay.</p>
+          </div>
+          <div class="group">
+            <h3>Recorded replay</h3>
+            <div class="actions">
+              <button class="primary" id="replay">Replay lookup</button>
+            </div>
+            <p class="hint">Finance posts the approved lookup against the recorded case book. Same capability, eleven member situations.</p>
+          </div>
+          <div class="summary">
+            <div class="stat" id="st-status"><b>Status</b><span>idle</span></div>
+            <div class="stat" id="st-outcome"><b>Outcome</b><span>—</span></div>
+            <div class="stat" id="st-member"><b>Member</b><span>12345</span></div>
+            <div class="stat" id="st-balance"><b>Savings</b><span>—</span></div>
+          </div>
+          <pre id="out">Ready. Replay a member to update both the teller screen and this desk.</pre>
+        </div>
+      </section>
+    </div>
+  </div>
   <script>
-    const out = document.getElementById("out");
     const member = document.getElementById("member");
-    const run = async (memberId) => {
+    const out = document.getElementById("out");
+    const core = document.getElementById("core");
+    let cases = [];
+    const findCase = (id) => cases.find((c) => c.id === id);
+    const alertFor = (outcome) => ({
+      MEMBER_NOT_FOUND: "No such member.",
+      PERMISSION_DENIED: "Permission denied.",
+      ACCOUNT_FROZEN: "Account is frozen.",
+      ESTATE_HOLD: "Estate hold — supervisor required.",
+      VALIDATION_FAILED: "Member ID must be 5 digits.",
+    }[outcome] || "");
+    const paintCore = (id, result) => {
+      const row = findCase(id);
+      const balance = result?.outputs?.savingsBalance;
+      const outcome = result?.outcome;
+      if (balance) {
+        core.innerHTML = `<h2>Member ${esc(id)}</h2><p class="meta">${esc(result.outputs.memberName || row?.name || "Member")} · ${esc(row?.relationship || "Primary")} · ${esc(row?.ticket || "")}</p>
+          ${row?.flag ? `<p class="alert">${esc(row.flag)}</p>` : ""}
+          <table class="grid"><tr><td>Savings balance</td><td class="ok">${esc(balance)}</td></tr>
+          <tr><td>Account pane</td><td>iframe · Savings ${esc(balance)}</td></tr></table>
+          <p class="meta" style="margin-top:16px">${esc(row?.teller || "")}</p>`;
+        return;
+      }
+      const alert = alertFor(outcome) || "Enter a five-digit member number. This is the branch servicing screen.";
+      core.innerHTML = `<h2>Member lookup</h2><p class="meta">Branch 014 · Operator TELLER-07 · ${esc(row?.ticket || "queue")}</p>
+        ${result ? `<p class="alert">${alert}</p>` : `<p class="meta">${alert}</p>`}
+        <table class="grid"><tr><td>Member ID</td><td>${esc(id)}</td></tr>
+        <tr><td>Look up</td><td>${result ? alert : "Waiting for an analyst replay"}</td></tr></table>
+        <p class="meta">${esc(row?.teller || "")}</p>`;
+    };
+    const setStat = (id, value, tone) => {
+      const el = document.getElementById(id);
+      el.className = "stat" + (tone ? " " + tone : "");
+      el.querySelector("span").textContent = value;
+    };
+    const show = (id, result) => {
+      out.textContent = JSON.stringify(result, null, 2);
+      const status = result.status || "unknown";
+      const outcome = result.outcome || "—";
+      const balance = result.outputs?.savingsBalance || "—";
+      setStat("st-status", status, /success/.test(status) ? "good" : /business|fail/.test(status) ? "warn" : "");
+      setStat("st-outcome", outcome, /DENIED|NOT_FOUND|FROZEN|ESTATE|VALIDATION/.test(outcome) ? "bad" : "");
+      setStat("st-member", id);
+      setStat("st-balance", balance, balance !== "—" ? "good" : "");
+      paintCore(id, result);
+    };
+    const run = async (id) => {
+      member.value = id;
+      document.querySelectorAll("[data-member]").forEach((b) => {
+        b.className = b.getAttribute("data-member") === id ? "primary" : "ghost";
+      });
       const r = await fetch("/api/replay", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ memberId }),
+        body: JSON.stringify({ memberId: id }),
       });
-      out.textContent = JSON.stringify(await r.json(), null, 2);
+      show(id, await r.json());
     };
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const mountCases = (list) => {
+      cases = list;
+      const render = (host, rows) => {
+        host.innerHTML = "";
+        rows.forEach((c) => {
+          const b = document.createElement("button");
+          b.className = c.id === member.value ? "primary" : "ghost";
+          b.setAttribute("data-member", c.id);
+          b.textContent = `${c.label} · ${c.id}`;
+          b.title = `${c.teller} ${c.analyst}`;
+          b.onclick = () => {
+            document.getElementById("caseHint").textContent = `${c.ticket} · ${c.reason}. Teller: ${c.teller} Analyst: ${c.analyst}`;
+            run(c.id);
+          };
+          host.appendChild(b);
+        });
+      };
+      render(document.getElementById("readable"), list.filter((c) => c.outcome === "success"));
+      render(document.getElementById("blocked"), list.filter((c) => c.outcome !== "success"));
+      paintCore(member.value, null);
+    };
+    fetch("/api/cases").then((r) => r.json()).then((j) => mountCases(j.cases || [])).catch(() => mountCases([]));
     document.getElementById("replay").onclick = () => run(member.value);
-    document.getElementById("missing").onclick = () => run("99999");
-    document.getElementById("denied").onclick = () => run("88888");
   </script>
 </body>
 </html>

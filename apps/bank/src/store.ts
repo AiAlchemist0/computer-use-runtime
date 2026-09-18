@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { CASES, type DemoCase } from "./cases.js";
 
 export type ChaosKind =
   | "none"
@@ -14,13 +15,42 @@ export type Member = {
   id: string;
   name: string;
   savings: string;
+  checking?: string;
+  moneyMarket?: string;
+  relationship: string;
+  product: string;
+  branch: string;
+  opened: string;
+  lastSeen: string;
+  status: string;
+  flag?: string;
   restricted?: boolean;
+  block?: { code: string; message: string };
+  scenario: string;
 };
 
-export const MEMBERS: Member[] = [
-  { id: "12345", name: "A. Nguyen", savings: "$1,842.17" },
-  { id: "88888", name: "Restricted Record", savings: "$9.00", restricted: true },
-];
+const toMember = (c: DemoCase): Member | undefined => {
+  if (!c.name || !c.savings) return undefined;
+  return {
+    id: c.id,
+    name: c.name,
+    savings: c.savings,
+    checking: c.checking,
+    moneyMarket: c.moneyMarket,
+    relationship: c.relationship ?? "Primary",
+    product: c.product ?? "Regular shares",
+    branch: c.branch ?? "014 · Harbor",
+    opened: c.opened ?? "—",
+    lastSeen: c.lastSeen ?? "—",
+    status: c.status ?? "Active",
+    flag: c.flag,
+    restricted: c.outcome === "PERMISSION_DENIED",
+    block: c.blockMessage ? { code: c.outcome, message: c.blockMessage } : undefined,
+    scenario: c.label,
+  };
+};
+
+export const MEMBERS: Member[] = CASES.map(toMember).filter((m): m is Member => Boolean(m));
 
 export type BankSession = {
   id: string;
@@ -46,3 +76,5 @@ export const resetSession = (id: string) => {
 };
 
 export const findMember = (id: string): Member | undefined => MEMBERS.find((m) => m.id === id);
+
+export { CASES, findCase } from "./cases.js";
