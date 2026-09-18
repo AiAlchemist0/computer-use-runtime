@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { discover, FakeLlm, FileStore, lookupBalanceScript, PolicyGuard, replay, seedLookupBalance, Session, WebAdapter, loopbackPolicy } from "@cur/engine";
 import { Capability } from "@cur/schema";
 import { startServe } from "./serve.js";
 
-const root = resolve(process.cwd());
+const root = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const evidenceRoot = join(root, "evidence");
 
 const args = process.argv.slice(2);
@@ -102,7 +103,10 @@ const runDiscover = async () => {
 };
 
 const runReplay = async () => {
-  const artifactPath = flag("artifact", join(evidenceRoot, "capabilities", "lookup-savings-balance.json"))!;
+  const artifactPath = resolve(
+    root,
+    flag("artifact", join("evidence", "capabilities", "lookup-savings-balance.json"))!,
+  );
   const target = flag("target", "http://127.0.0.1:4177/");
   if (!existsSync(artifactPath)) {
     mkdirSync(join(evidenceRoot, "capabilities"), { recursive: true });

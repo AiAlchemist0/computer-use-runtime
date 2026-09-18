@@ -8,7 +8,7 @@ One Node/TypeScript engine runs in the CLI, in tests, and (optionally) in a Clou
 
 The mock bank is a localhost-only Hono app. The console never exposes it as a public URL. Cloudflare Worker + Durable Object + Turnstile are a hosted extra, not required to grade the repo. Persistence is a `Store` interface: files under `/evidence/` locally.
 
-We did not use Stagehand or Browserbase. Their `observe() → Action → act(Action)` cache is the same thesis as a product. Ours differs: typed inputs/outputs, first-class business-outcome detectors, a policy snapshot on the artifact, a same-session HITL seam, no vendor-hosted cache, and a Playwright adapter we own. Vendor computer-use toolsets (Anthropic `browser_toolset`, OpenAI CUA) are a possible future `SurfaceAdapter`, not v1. The discover contract is our Zod tools plus `LLM_PROVIDER`. Live-provider runs stay `draft` unless they finish and extract.
+We did not use Stagehand or Browserbase. Their `observe() → Action → act(Action)` cache is the same thesis as a product. Ours differs: typed inputs/outputs, first-class business-outcome detectors, a policy snapshot on the artifact, a same-session HITL seam, no vendor-hosted cache, and a Playwright adapter we own. Vendor computer-use toolsets (Anthropic `browser_toolset`, OpenAI CUA) are a possible future `SurfaceAdapter`, not v1. The discover contract is our Zod tools plus `LLM_PROVIDER`. Live-provider runs stay `draft` unless they finish and extract. The checked-in pack includes an approved `zai:glm-5.3-flash` run (`evidence/discovery-4c1ef589`).
 
 Trade-off: Playwright + the accessibility tree over a vendor SDK so the artifact is ours. We own the bank so every exception class is reproducible.
 

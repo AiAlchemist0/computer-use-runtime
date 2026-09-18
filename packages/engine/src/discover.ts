@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import type { Capability, CapabilityStep, LocatorChain, Parameter } from "@cur/schema";
-import { deriveChain, deriveChainFromRef, parseAriaRefs, WebAdapter } from "./web-adapter.js";
+import { annotateFramePath, deriveChain, deriveChainFromRef, parseAriaRefs, WebAdapter } from "./web-adapter.js";
 import { PolicyGuard, PolicyDenied } from "./policy.js";
 import type { DiscoverLlm } from "./llm.js";
 import type { Session } from "./session.js";
@@ -25,7 +25,7 @@ export type DiscoverInput = {
 
 export type DiscoverOutput = {
   capability: Capability;
-  events: Array<{ why: string; action: string }>;
+  events: Array<{ why: string; action: string; kind?: string }>;
   transcript: string[];
 };
 
@@ -36,7 +36,7 @@ export const discover = async (input: DiscoverInput): Promise<DiscoverOutput> =>
   const deadline = Date.now() + (input.timeoutMs ?? 120_000);
   const steps: CapabilityStep[] = [];
   const transcript: string[] = [];
-  const events: Array<{ why: string; action: string }> = [];
+  const events: Array<{ why: string; action: string; kind?: string }> = [];
   const history: string[] = [];
   let lastHash = "";
   let stagnant = 0;
@@ -49,7 +49,7 @@ export const discover = async (input: DiscoverInput): Promise<DiscoverOutput> =>
 
   const escalate = (why: string) => {
     input.session.setOwner("human");
-    events.push({ action: "escalate", why });
+    events.push({ action: "escalate", why, kind: "escalation_requested" });
     history.push(`escalate: ${why}`);
   };
 
@@ -58,8 +58,9 @@ export const discover = async (input: DiscoverInput): Promise<DiscoverOutput> =>
     input.session.assertAgent();
     const obs = await input.adapter.observe();
     const snapHash = hash(obs.aria);
-    if (snapHash === lastHash) stagnant += 1;
-    else stagnant = 0;
+    const lastStepWasExtract = steps.at(-1)?.action === "extract";
+    if (snapHash === lastHash && !lastStepWasExtract) stagnant += 1;
+    else if (snapHash !== lastHash) stagnant = 0;
     lastHash = snapHash;
     if (stagnant >= 3) {
       escalate("stagnant snapshot; operator takeover");
@@ -140,9 +141,10 @@ export const discover = async (input: DiscoverInput): Promise<DiscoverOutput> =>
     } else if (hint.role || hint.name) {
       chain = await deriveChain(page, action, hint);
     }
+    if (chain) chain = await annotateFramePath(page, chain);
 
     const sig = `${action}:${chain?.candidates[0]?.name ?? ""}`;
-    if (sig === lastAction) stagnant += 1;
+    if (sig === lastAction && action !== "extract") stagnant += 1;
     lastAction = sig;
 
     await input.adapter.act({ action, target: chain, value: rawValue });

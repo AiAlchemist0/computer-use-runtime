@@ -6,9 +6,13 @@ dist
 *.log
 .env
 .env.local
+*.local.txt
+apps/worker/zai-api-key.local.txt
+apps/worker/llm-api-key.local.txt
 .DS_Store
 coverage
 apps/console/dist
 apps/worker/dist
+cli/evidence
 .playwright-cache
 .cache

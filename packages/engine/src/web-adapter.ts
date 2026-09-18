@@ -1,4 +1,4 @@
-import { type Browser, type BrowserContext, type Locator, type Page, chromium } from "playwright";
+import { type Browser, type BrowserContext, type Frame, type Locator, type Page, chromium } from "playwright";
 import type { ActionType, Checkpoint, LocatorCandidate, LocatorChain } from "@cur/schema";
 import { PolicyDenied, PolicyGuard } from "./policy.js";
 import type { ActRequest, ExtractResult, HumanPointer, ObserveResult, SurfaceAdapter } from "./interfaces.js";
@@ -85,9 +85,16 @@ export class WebAdapter implements SurfaceAdapter {
   }
 
   async resolve(chain: LocatorChain): Promise<{ count: number; handleOk: boolean }> {
-    const loc = this.locatorFromChain(chain);
-    const count = await loc.count();
-    return { count, handleOk: count === 1 };
+    try {
+      const loc = await this.uniqueLocator(chain);
+      const count = await loc.count();
+      return { count, handleOk: count === 1 };
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      if (code === "AMBIGUOUS_TARGET") return { count: 2, handleOk: false };
+      if (code === "TARGET_NOT_FOUND") return { count: 0, handleOk: false };
+      throw err;
+    }
   }
 
   async act(req: ActRequest): Promise<void> {
@@ -113,11 +120,17 @@ export class WebAdapter implements SurfaceAdapter {
     await loc.scrollIntoViewIfNeeded().catch(() => undefined);
     switch (req.action) {
       case "click":
-      case "dismiss":
-        await loc.click();
+      case "dismiss": {
+        const visible = await Promise.race([
+          loc.isVisible(),
+          new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 400)),
+        ]);
+        if (!visible) throw Object.assign(new Error("TARGET_NOT_FOUND"), { code: "TARGET_NOT_FOUND" });
+        await loc.click({ timeout: 8000 });
         break;
+      }
       case "type":
-        await loc.fill(req.value ?? "");
+        await loc.fill(req.value ?? "", { timeout: 8000 });
         break;
       case "select":
         await loc.selectOption(req.value ?? "");
@@ -128,18 +141,25 @@ export class WebAdapter implements SurfaceAdapter {
       default:
         throw new Error(`unsupported action ${req.action}`);
     }
-    await page.waitForLoadState("domcontentloaded").catch(() => undefined);
+    await page.waitForLoadState("domcontentloaded", { timeout: 8000 }).catch(() => undefined);
   }
 
   async extract(chain: LocatorChain): Promise<ExtractResult> {
     const loc = await this.uniqueLocator(chain);
-    const text = ((await loc.innerText()) ?? (await loc.inputValue().catch(() => ""))).trim();
+    const text = ((await loc.innerText({ timeout: 5000 })) ?? (await loc.inputValue().catch(() => ""))).trim();
     return { text };
   }
 
   async screenshot(opts?: { mask?: LocatorChain[] }): Promise<Buffer> {
     const page = this.pageOrThrow();
-    const mask = (opts?.mask ?? []).map((chain) => this.locatorFromChain(chain));
+    const mask: Locator[] = [];
+    for (const chain of opts?.mask ?? []) {
+      try {
+        mask.push(await this.uniqueLocator(chain));
+      } catch {
+        if (chain.candidates[0]) mask.push(this.locatorFromChain(chain));
+      }
+    }
     return page.screenshot({
       type: "jpeg",
       quality: 55,
@@ -164,11 +184,8 @@ export class WebAdapter implements SurfaceAdapter {
       return;
     }
     if (kind === "element" && value) {
-      const [role, name] = value.includes(":") ? value.split(":") : ["button", value];
-      const loc = name
-        ? page.getByRole((role || "button") as "button", { name })
-        : page.getByRole((role || "button") as "button");
-      await loc.first().waitFor({ timeout: timeoutMs });
+      const loc = await this.elementWaitLocator(value);
+      await loc.waitFor({ timeout: timeoutMs });
     }
   }
 
@@ -275,16 +292,21 @@ export class WebAdapter implements SurfaceAdapter {
 
   async uniqueLocator(chain: LocatorChain): Promise<Locator> {
     const page = this.pageOrThrow();
+    const countSafe = async (loc: Locator, ms = 1500) =>
+      Promise.race([
+        loc.count(),
+        new Promise<number>((resolve) => setTimeout(() => resolve(-1), ms)),
+      ]);
     let lastAmbiguous = false;
     for (const c of chain.candidates) {
       const loc = this.locatorForCandidate(chain.framePath, c);
-      const count = await loc.count();
+      const count = await countSafe(loc);
       if (count === 1) return loc;
       if (count > 1) lastAmbiguous = true;
     }
     if (!chain.framePath.length) {
       for (const frame of page.frames()) {
-        if (frame === page.mainFrame()) continue;
+        if (frame === page.mainFrame() || frame.isDetached()) continue;
         for (const c of chain.candidates) {
           const framed =
             c.strategy === "role_name" && c.role
@@ -292,7 +314,13 @@ export class WebAdapter implements SurfaceAdapter {
               : c.text
                 ? frame.getByText(c.text)
                 : null;
-          if (framed && (await framed.count()) === 1) return framed;
+          if (!framed) continue;
+          const count = await Promise.race([
+            framed.count(),
+            new Promise<number>((resolve) => setTimeout(() => resolve(-1), 400)),
+          ]);
+          if (count === 1) return framed;
+          if (count > 1) lastAmbiguous = true;
         }
       }
     }
@@ -310,6 +338,37 @@ export class WebAdapter implements SurfaceAdapter {
       if (c.strategy === "label" && c.text) return fl.getByLabel(c.text);
     }
     return this.candidateToLocator(page, c);
+  }
+
+  private async elementWaitLocator(value: string): Promise<Locator> {
+    const page = this.pageOrThrow();
+    if (/^[.#\[]/.test(value)) {
+      const loc = page.locator(value);
+      if ((await loc.count()) !== 1) {
+        throw Object.assign(new Error("TARGET_NOT_FOUND"), { code: "TARGET_NOT_FOUND" });
+      }
+      return loc;
+    }
+    if (value.includes(":")) {
+      const idx = value.indexOf(":");
+      const role = value.slice(0, idx).trim();
+      const name = value.slice(idx + 1).trim();
+      const loc = name ? page.getByRole(role as "button", { name }) : page.getByRole(role as "button");
+      const count = await loc.count();
+      if (count !== 1) {
+        throw Object.assign(new Error(count > 1 ? "AMBIGUOUS_TARGET" : "TARGET_NOT_FOUND"), {
+          code: count > 1 ? "AMBIGUOUS_TARGET" : "TARGET_NOT_FOUND",
+        });
+      }
+      return loc;
+    }
+    for (const role of ["status", "textbox", "button", "heading", "link", "alert"] as const) {
+      const loc = page.getByRole(role, { name: value });
+      if ((await loc.count()) === 1) return loc;
+    }
+    const text = page.getByText(value, { exact: false });
+    if ((await text.count()) === 1) return text;
+    throw Object.assign(new Error("TARGET_NOT_FOUND"), { code: "TARGET_NOT_FOUND" });
   }
 
   private candidateToLocator(page: Page, c: LocatorCandidate): Locator {
@@ -356,6 +415,58 @@ export const parseAriaRefs = (aria: string): Array<{ role: string; name: string;
   return out;
 };
 
+const candidateOn = (root: Pick<Page, "getByRole" | "getByText" | "getByLabel">, c: LocatorCandidate) => {
+  if (c.strategy === "role_name" && c.role) return root.getByRole(c.role as "textbox", { name: c.name });
+  if (c.strategy === "label" && c.text) return root.getByLabel(c.text);
+  if (c.strategy === "text" && c.text) return root.getByText(c.text);
+  return null;
+};
+
+const selectorForFrame = async (page: Page, frame: Frame) => {
+  const name = frame.name();
+  if (name) return `iframe[name="${name}"]`;
+  const url = frame.url();
+  const frames = page.locator("iframe");
+  const n = await frames.count();
+  for (let i = 0; i < n; i++) {
+    const node = frames.nth(i);
+    const src = await node.getAttribute("src");
+    const title = await node.getAttribute("title");
+    if (src && url.includes(src)) {
+      if (title) return `iframe[title="${title}"]`;
+      return `iframe[src="${src}"]`;
+    }
+  }
+  if (url.includes("/pane")) return 'iframe[title="Account pane"]';
+  return "iframe";
+};
+
+export const inferFramePath = async (page: Page, chain: LocatorChain): Promise<string[]> => {
+  if (chain.framePath.length) return chain.framePath;
+  for (const c of chain.candidates) {
+    const main = candidateOn(page, c);
+    if (main && (await main.count()) === 1) return [];
+  }
+  for (const frame of page.frames()) {
+    if (frame === page.mainFrame()) continue;
+    for (const c of chain.candidates) {
+      const loc = candidateOn(frame, c);
+      if (loc && (await loc.count()) === 1) return [await selectorForFrame(page, frame)];
+    }
+  }
+  return [];
+};
+
+export const annotateFramePath = async (page: Page, chain: LocatorChain): Promise<LocatorChain> => {
+  const framePath = await inferFramePath(page, chain);
+  if (!framePath.length) return chain;
+  return {
+    ...chain,
+    framePath,
+    fingerprint: { ...chain.fingerprint, framePath },
+  };
+};
+
 export const deriveChainFromRef = async (page: Page, ref: string): Promise<LocatorChain> => {
   const loc = page.locator(`aria-ref=${ref}`);
   const count = await loc.count();
@@ -365,11 +476,11 @@ export const deriveChainFromRef = async (page: Page, ref: string): Promise<Locat
     (await loc.innerText().catch(() => "")).trim().slice(0, 80);
   const inferredRole = role ?? ((await loc.evaluate((el) => el.tagName.toLowerCase()).catch(() => "generic")) || "generic");
   const mapped = inferredRole === "input" || inferredRole === "textarea" ? "textbox" : inferredRole === "button" ? "button" : inferredRole;
-  return {
+  return annotateFramePath(page, {
     candidates: [{ strategy: "role_name", role: mapped, name, weak: false }],
     fingerprint: { role: mapped, name, candidateCount: count || 1, framePath: [] },
     framePath: [],
-  };
+  });
 };
 
 export const deriveChain = async (
@@ -381,12 +492,12 @@ export const deriveChain = async (
   const name = hint.name ?? hint.label ?? "";
   const loc = name ? page.getByRole(role as "textbox", { name }) : page.getByRole(role as "button");
   const count = await loc.count();
-  return {
+  return annotateFramePath(page, {
     candidates: [
       { strategy: "role_name", role, name, weak: false },
       ...(hint.label ? [{ strategy: "label" as const, text: hint.label, weak: false }] : []),
     ],
     fingerprint: { role, name, candidateCount: count, framePath: [] },
     framePath: [],
-  };
+  });
 };

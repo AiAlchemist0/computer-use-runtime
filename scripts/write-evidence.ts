@@ -29,6 +29,10 @@ const main = async () => {
   const live = await runDiscover(bank.url, bank.port, "live");
   const compiledCap = bindPort(readCapability(compiled), bank.port);
   await store.writeCapability("lookup-savings-balance", { ...compiledCap, id: "lookup-savings-balance", status: "approved" });
+  const liveStatus = live ? readCapability(live).status : "skipped";
+  if (live && liveStatus !== "approved") {
+    throw new Error(`Live discover ${live} stayed ${liveStatus}. Inspect ${live}/steps.json and transcript.redacted.jsonl`);
+  }
 
   const success = await runReplay(bank.url, bank.port, compiledCap, "12345", false, "success");
   const missing = await runReplay(bank.url, bank.port, compiledCap, "99999", true, "not-found");
@@ -40,7 +44,7 @@ const main = async () => {
     `# Evidence
 
 - Compiled discovery: \`${compiled}\` — live aria snapshot, scripted tool policy, locators recorded after resolve. This is the complete replayable artifact.
-- Live-provider discovery: \`${live ?? "skipped (no LLM_PROVIDER)"}\` — same engine, \`LLM_PROVIDER\` tool loop. Incomplete unless the model finished and extracted.
+- Live-provider discovery: \`${live ?? "skipped (no LLM_PROVIDER)"}\` — same engine, \`LLM_PROVIDER\` tool loop.${live ? ` Status \`${liveStatus}\`.` : ""}
 - Success replay (from compiled capability): \`${success}\`
 - Exceptional replay (MEMBER_NOT_FOUND + trace): \`${missing}\`
 - Permission replay: \`${denied}\`
@@ -89,7 +93,7 @@ const runDiscover = async (target: string, port: number, kind: "compiled" | "liv
       policy,
       session,
       modelId: live?.modelId ?? "fake+aria-ref",
-      maxSteps: kind === "live" ? 8 : 20,
+      maxSteps: kind === "live" ? 16 : 20,
     });
     const finished = out.events.some((e) => e.action === "finish");
     const complete = isDiscoverComplete(out.capability.steps, finished);

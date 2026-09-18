@@ -1,4 +1,0 @@
-{"tool":"type","why":"Enter the member identifier into the lookup field","args":{"role":"textbox","name":"Member ID","paramRef":"memberId","why":"Enter the member identifier into the lookup field","ref":"e15"}}
-{"tool":"click","why":"Submit the member search","args":{"role":"button","name":"Look up","why":"Submit the member search","ref":"e17"}}
-{"tool":"extract","why":"Read the current savings balance from the member record","args":{"role":"status","name":"Savings balance","outputName":"savingsBalance","why":"Read the current savings balance from the member record"}}
-{"tool":"finish","why":"Balance is visible; goal met","args":{"why":"Balance is visible; goal met"}}

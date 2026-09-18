@@ -1,5 +1,0 @@
-{"tool":"type","why":"Enter the member ID to look up the member","args":{"ref":"e15","paramRef":"memberId","why":"Enter the member ID to look up the member"}}
-{"tool":"type","why":"Enter the member ID to look up the member","args":{"ref":"e15","paramRef":"memberId","why":"Enter the member ID to look up the member"}}
-{"tool":"click","why":"Click the submit control after typing the member ID to look up the member","args":{"ref":"e17","why":"Click the submit control after typing the member ID to look up the member"}}
-{"tool":"extract","why":"read the member's current savings balance","args":{"ref":"f1e11","why":"read the member's current savings balance"}}
-{"tool":"extract","why":"read the member's current savings balance","args":{"ref":"f1e11","outputName":"savingsBalance","why":"read the member's current savings balance"}}

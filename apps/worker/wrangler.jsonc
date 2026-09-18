@@ -14,7 +14,10 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["SessionCoordinator"] }],
   "vars": {
     "DEMO_ENABLED": "true",
-    "DAILY_SESSION_BUDGET": "40"
+    "DAILY_SESSION_BUDGET": "40",
+    "LLM_PROVIDER": "zai",
+    "LLM_MODEL": "glm-5.3-flash",
+    "ZAI_BASE_URL": "https://api.z.ai/api/paas/v4"
   },
   "workers_dev": true,
   "routes": [

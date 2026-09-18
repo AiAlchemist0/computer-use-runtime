@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { discover, FakeLlm, lookupBalanceScript, replay, seedLookupBalance } from "@cur/engine";
+import { discover, FakeLlm, inferFramePath, lookupBalanceScript, replay, seedLookupBalance } from "@cur/engine";
 import { makeAdapter, startBank } from "./helpers.js";
 
 let bank: Awaited<ReturnType<typeof startBank>>;
@@ -423,6 +423,91 @@ describe("replay + discover", () => {
       });
       expect(resumed.status).toBe("success");
       expect(resumed.outputs?.savingsBalance).toMatch(/1,842/);
+    } finally {
+      await adapter.close();
+    }
+  });
+
+  it("records escalation_requested when discover escalates", async () => {
+    const { adapter, policy, session } = makeAdapter(bank.port);
+    try {
+      const out = await discover({
+        goal: "look up the member",
+        target: bank.url,
+        params: [{ name: "memberId", type: "string", required: true, sensitivity: "pii", description: "id" }],
+        values: { memberId: "12345" },
+        adapter,
+        llm: new FakeLlm([{ name: "escalate", arguments: { why: "stuck on entry" } }]),
+        policy,
+        session,
+        modelId: "fake",
+      });
+      expect(out.events.some((e) => e.kind === "escalation_requested")).toBe(true);
+      expect(session.controlOwner).toBe("human");
+      expect(out.capability.status).toBe("draft");
+    } finally {
+      await adapter.close();
+    }
+  });
+
+  it("tries locator candidates until one is unique", async () => {
+    const { adapter } = makeAdapter(bank.port);
+    try {
+      await adapter.launch(bank.url);
+      const resolved = await adapter.resolve({
+        candidates: [
+          { strategy: "role_name", role: "button", name: "No such control", weak: true },
+          { strategy: "role_name", role: "textbox", name: "Member ID", weak: false },
+        ],
+        fingerprint: { name: "Member ID", candidateCount: 1, framePath: [] },
+        framePath: [],
+      });
+      expect(resolved.handleOk).toBe(true);
+      expect(resolved.count).toBe(1);
+    } finally {
+      await adapter.close();
+    }
+  });
+
+  it("waits for an element by role:name without defaulting to button", async () => {
+    const { adapter } = makeAdapter(bank.port);
+    try {
+      await adapter.launch(bank.url);
+      await adapter.waitFor("element", "textbox:Member ID", 4000);
+      await adapter.waitFor("element", "Member ID", 4000);
+    } finally {
+      await adapter.close();
+    }
+  });
+
+  it("records iframe framePath when the unique hit is only in the account pane", async () => {
+    const { adapter } = makeAdapter(bank.port);
+    try {
+      await adapter.launch(bank.url);
+      await adapter.act({
+        action: "type",
+        target: {
+          candidates: [{ strategy: "role_name", role: "textbox", name: "Member ID", weak: false }],
+          fingerprint: { role: "textbox", name: "Member ID", candidateCount: 1, framePath: [] },
+          framePath: [],
+        },
+        value: "12345",
+      });
+      await adapter.act({
+        action: "click",
+        target: {
+          candidates: [{ strategy: "role_name", role: "button", name: "Look up", weak: false }],
+          fingerprint: { role: "button", name: "Look up", candidateCount: 1, framePath: [] },
+          framePath: [],
+        },
+      });
+      await adapter.waitFor("text", "Savings balance", 4000);
+      const path = await inferFramePath(adapter.pageOrThrow(), {
+        candidates: [{ strategy: "text", text: "Checking", weak: false }],
+        fingerprint: { name: "Checking", candidateCount: 1, framePath: [] },
+        framePath: [],
+      });
+      expect(path).toContain('iframe[title="Account pane"]');
     } finally {
       await adapter.close();
     }

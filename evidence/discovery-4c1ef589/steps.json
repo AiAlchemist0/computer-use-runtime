@@ -1,0 +1,26 @@
+[
+  {
+    "action": "type",
+    "why": "Enter member ID to look up"
+  },
+  {
+    "action": "click",
+    "why": "Member ID already entered; submit the lookup form."
+  },
+  {
+    "action": "extract",
+    "why": "Reading the member's current savings balance, which is the goal."
+  },
+  {
+    "action": "extract",
+    "why": "Reading the member's current savings balance, which is the goal."
+  },
+  {
+    "action": "extract",
+    "why": "Goal is the member's current savings balance, visible as $1,842.17."
+  },
+  {
+    "action": "finish",
+    "why": "Member's current savings balance is visible as $1,842.17 (status \"Savings balance\" ref=f1e32)."
+  }
+]

@@ -102,9 +102,9 @@ export OPENAI_API_KEY=...
 pnpm discover -- --goal "..." --target http://127.0.0.1:4177/ --param memberId=12345 --llm openai
 ```
 
-`LLM_PROVIDER` can be `openai`, `anthropic`, `google`, `xai`, `openrouter`, or `venice`.
+`LLM_PROVIDER` can be `openai`, `anthropic`, `google`, `xai`, `openrouter`, `venice`, or `zai`.
 
-A weak or poorly prompted model may loop on `type` and leave a **draft**. That is still useful evidence of the live tool loop. The complete replayable artifact is the compiled / fake-LLM discovery in `/evidence`. Rebuild the pack with `pnpm evidence`.
+A weak or poorly prompted model may loop on `type` and leave a **draft**. The checked-in live run (`evidence/discovery-4c1ef589`, `zai:glm-5.3-flash`) finished and extracted. The default replayable artifact is still the compiled / fake-LLM discovery. Rebuild the pack with `pnpm evidence`.
 
 ## Layout
 

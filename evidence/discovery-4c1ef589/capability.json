@@ -4,13 +4,13 @@
   "name": "lookup_savings_balance",
   "description": "look up the member and read their current savings balance",
   "revision": 1,
-  "status": "draft",
+  "status": "approved",
   "appProfile": "mock-core-v1",
   "provenance": {
-    "discoveryRunId": "fe5c1ff1-2118-42bf-bd45-1ce77a73ab31",
-    "modelId": "venice:llama-3.3-70b",
-    "createdAt": "2026-09-18T00:01:39.738Z",
-    "sourceHash": "fc065ef74d17724c"
+    "discoveryRunId": "4c1ef589-5345-4ec3-ba45-f5d48b303c27",
+    "modelId": "zai:glm-5.3-flash",
+    "createdAt": "2026-09-18T03:14:27.035Z",
+    "sourceHash": "1dd0deb783c88b77"
   },
   "riskClass": "reversible",
   "policy": {
@@ -86,41 +86,10 @@
         "timeoutMs": 8000
       },
       "riskClass": "reversible",
-      "why": "Enter the member ID to look up the member"
+      "why": "Enter member ID to look up"
     },
     {
       "id": "s2",
-      "action": "type",
-      "target": {
-        "candidates": [
-          {
-            "strategy": "role_name",
-            "role": "textbox",
-            "name": "Member ID",
-            "weak": false
-          }
-        ],
-        "fingerprint": {
-          "role": "textbox",
-          "name": "Member ID",
-          "candidateCount": 1,
-          "framePath": []
-        },
-        "framePath": []
-      },
-      "input": {
-        "kind": "paramRef",
-        "param": "memberId"
-      },
-      "waitFor": {
-        "kind": "load",
-        "timeoutMs": 8000
-      },
-      "riskClass": "reversible",
-      "why": "Enter the member ID to look up the member"
-    },
-    {
-      "id": "s3",
       "action": "click",
       "target": {
         "candidates": [
@@ -144,7 +113,35 @@
         "timeoutMs": 8000
       },
       "riskClass": "reversible",
-      "why": "Click the submit control after typing the member ID to look up the member"
+      "why": "Member ID already entered; submit the lookup form."
+    },
+    {
+      "id": "s3",
+      "action": "extract",
+      "target": {
+        "candidates": [
+          {
+            "strategy": "role_name",
+            "role": "status",
+            "name": "Savings balance",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "role": "status",
+          "name": "Savings balance",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "outputName": "savings_balance",
+      "waitFor": {
+        "kind": "load",
+        "timeoutMs": 8000
+      },
+      "riskClass": "reversible",
+      "why": "Reading the member's current savings balance, which is the goal."
     },
     {
       "id": "s4",
@@ -166,12 +163,13 @@
         },
         "framePath": []
       },
+      "outputName": "savingsBalance",
       "waitFor": {
         "kind": "load",
         "timeoutMs": 8000
       },
       "riskClass": "reversible",
-      "why": "read the member's current savings balance"
+      "why": "Reading the member's current savings balance, which is the goal."
     },
     {
       "id": "s5",
@@ -199,12 +197,12 @@
         "timeoutMs": 8000
       },
       "riskClass": "reversible",
-      "why": "read the member's current savings balance"
+      "why": "Goal is the member's current savings balance, visible as $1,842.17."
     }
   ],
   "outcomeDetectors": [
     {
-      "afterStep": 2,
+      "afterStep": 1,
       "locator": {
         "candidates": [
           {
@@ -224,7 +222,7 @@
       "outcome": "MEMBER_NOT_FOUND"
     },
     {
-      "afterStep": 2,
+      "afterStep": 1,
       "locator": {
         "candidates": [
           {
@@ -244,7 +242,47 @@
       "outcome": "PERMISSION_DENIED"
     },
     {
-      "afterStep": 2,
+      "afterStep": 1,
+      "locator": {
+        "candidates": [
+          {
+            "strategy": "text",
+            "text": "Account is frozen",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "name": "Account is frozen",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "pattern": "Account is frozen",
+      "outcome": "ACCOUNT_FROZEN"
+    },
+    {
+      "afterStep": 1,
+      "locator": {
+        "candidates": [
+          {
+            "strategy": "text",
+            "text": "Estate hold",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "name": "Estate hold",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "pattern": "Estate hold",
+      "outcome": "ESTATE_HOLD"
+    },
+    {
+      "afterStep": 1,
       "locator": {
         "candidates": [
           {
@@ -276,6 +314,14 @@
     {
       "code": "PERMISSION_DENIED",
       "description": "Operator is not allowed to view this record"
+    },
+    {
+      "code": "ACCOUNT_FROZEN",
+      "description": "Fraud or operational freeze blocks servicing"
+    },
+    {
+      "code": "ESTATE_HOLD",
+      "description": "Deceased member — supervisor and letters required"
     },
     {
       "code": "VALIDATION_FAILED",

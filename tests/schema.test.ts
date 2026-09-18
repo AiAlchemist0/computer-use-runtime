@@ -60,5 +60,6 @@ describe("schema", () => {
     });
     expect(prompt).toContain("memberId");
     expect(prompt).toContain("pii");
+    expect(prompt).toContain("call finish");
   });
 });

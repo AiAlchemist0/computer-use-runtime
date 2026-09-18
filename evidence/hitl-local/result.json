@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "runId": "3f5d1d5f-4162-4251-86f5-5395971489a6",
+  "runId": "f0866ca3-bdb2-4207-b54c-7ffdc886737d",
   "capabilityId": "lookup-savings-balance",
   "status": "success",
   "outputs": {
@@ -8,23 +8,23 @@
   },
   "events": [
     {
-      "at": "2026-09-18T00:01:41.455Z",
+      "at": "2026-09-18T03:14:29.012Z",
       "kind": "step_ok",
       "stepIndex": 0,
       "why": "Enter the member identifier into the lookup field"
     },
     {
-      "at": "2026-09-18T00:01:41.455Z",
+      "at": "2026-09-18T03:14:29.012Z",
       "kind": "escalation_requested",
       "why": "pauseAfterStep — operator takeover"
     },
     {
-      "at": "2026-09-18T00:01:41.477Z",
+      "at": "2026-09-18T03:14:29.055Z",
       "kind": "human_action",
       "why": "click forwarded as nx,ny plus viewport",
       "detail": {
-        "nx": 0.2426278409090909,
-        "ny": 0.27760416666666665,
+        "nx": 0.24171875,
+        "ny": 0.2791666666666667,
         "viewport": {
           "width": 1100,
           "height": 720
@@ -49,25 +49,25 @@
       }
     },
     {
-      "at": "2026-09-18T00:01:41.528Z",
+      "at": "2026-09-18T03:14:29.142Z",
       "kind": "drift_warning",
       "stepIndex": 1,
       "why": "locator fingerprint changed"
     },
     {
-      "at": "2026-09-18T00:01:41.531Z",
+      "at": "2026-09-18T03:14:29.145Z",
       "kind": "recovered",
       "stepIndex": 1,
       "why": "click already satisfied by human"
     },
     {
-      "at": "2026-09-18T00:01:41.540Z",
+      "at": "2026-09-18T03:14:29.163Z",
       "kind": "step_ok",
       "stepIndex": 1,
       "why": "Submit the member search"
     },
     {
-      "at": "2026-09-18T00:01:41.550Z",
+      "at": "2026-09-18T03:14:29.179Z",
       "kind": "step_ok",
       "stepIndex": 2,
       "why": "Read the current savings balance from the member record"

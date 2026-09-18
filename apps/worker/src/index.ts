@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { chatReplay } from "./chat.js";
 import { CASES, HANDS, POLICY, recordedReplay } from "./cases.js";
 
 export type Env = {
@@ -8,6 +9,13 @@ export type Env = {
   TURNSTILE_SECRET_KEY?: string;
   DAILY_SESSION_BUDGET?: string;
   ASSETS?: { fetch: (req: Request) => Promise<Response> };
+  ZAI_API_KEY?: string;
+  ZAI_BASE_URL?: string;
+  VENICE_API_KEY?: string;
+  VENICE_BASE_URL?: string;
+  OPENAI_API_KEY?: string;
+  LLM_PROVIDER?: string;
+  LLM_MODEL?: string;
 };
 
 const todayKey = () => `budget:${new Date().toISOString().slice(0, 10)}`;
@@ -63,6 +71,10 @@ app.use(
       "https://deanshev.com",
       "https://www.deanshev.com",
       "https://interface.deanshev.com",
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:5174",
     ],
     allowMethods: ["GET", "POST", "OPTIONS"],
     allowHeaders: ["Content-Type"],
@@ -101,6 +113,10 @@ app.get("/api/integration", (c) =>
     policy: POLICY,
     cases: CASES,
     invoke: "POST /api/replay",
+    chat: "POST /api/chat",
+    llm: Boolean(c.env.ZAI_API_KEY || c.env.VENICE_API_KEY || c.env.OPENAI_API_KEY),
+    llmProvider: c.env.LLM_PROVIDER ?? (c.env.ZAI_API_KEY ? "zai" : undefined),
+    llmModel: c.env.LLM_MODEL,
   }),
 );
 
@@ -117,6 +133,17 @@ app.post("/api/replay", async (c) => {
   const body = await c.req.json<{ memberId?: string; turnstileToken?: string }>().catch(() => ({ memberId: "12345" }));
   const out = await gatedReplay(c, body.memberId, body.turnstileToken);
   return c.json(out.body, out.status);
+});
+
+app.post("/api/chat", async (c) => {
+  const body = await c.req.json<{ message?: string; memberId?: string; turnstileToken?: string }>().catch(() => ({ message: "" }));
+  if (c.env.DEMO_ENABLED === "false") {
+    return c.json({ error: "demo disabled", mode: "kill-switch-recorded" }, 503);
+  }
+  const ok = await verifyTurnstile(body.turnstileToken, c.env.TURNSTILE_SECRET_KEY, c.req.header("CF-Connecting-IP") ?? "");
+  if (!ok) return c.json({ error: "turnstile" }, 403);
+  const out = await chatReplay(c.env, body.message ?? "", body.memberId);
+  return c.json(out);
 });
 
 app.post("/capabilities/:id/invoke", async (c) => {

@@ -1,0 +1,6 @@
+{"tool":"type","why":"Enter member ID to look up","args":{"ref":"e22","paramRef":"memberId","why":"Enter member ID to look up"}}
+{"tool":"click","why":"Member ID already entered; submit the lookup form.","args":{"ref":"e24","name":"Look up","why":"Member ID already entered; submit the lookup form."}}
+{"tool":"extract","why":"Reading the member's current savings balance, which is the goal.","args":{"ref":"f1e32","outputName":"savings_balance","why":"Reading the member's current savings balance, which is the goal."}}
+{"tool":"extract","why":"Reading the member's current savings balance, which is the goal.","args":{"ref":"f1e32","outputName":"savingsBalance","why":"Reading the member's current savings balance, which is the goal."}}
+{"tool":"extract","why":"Goal is the member's current savings balance, visible as $1,842.17.","args":{"ref":"f1e32","outputName":"savingsBalance","why":"Goal is the member's current savings balance, visible as $1,842.17."}}
+{"tool":"finish","why":"Member's current savings balance is visible as $1,842.17 (status \"Savings balance\" ref=f1e32).","args":{"why":"Member's current savings balance is visible as $1,842.17 (status \"Savings balance\" ref=f1e32)."}}

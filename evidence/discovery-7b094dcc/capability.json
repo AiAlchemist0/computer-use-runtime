@@ -7,9 +7,9 @@
   "status": "approved",
   "appProfile": "mock-core-v1",
   "provenance": {
-    "discoveryRunId": "566f9f39-4c6e-41b5-adbe-01fa21392053",
+    "discoveryRunId": "7b094dcc-b94a-40a3-985d-77ebf0fffef0",
     "modelId": "fake+aria-ref",
-    "createdAt": "2026-09-18T00:01:31.122Z",
+    "createdAt": "2026-09-18T03:13:41.315Z",
     "sourceHash": "6a81bbd527a69b3c"
   },
   "riskClass": "reversible",
@@ -191,6 +191,46 @@
         "candidates": [
           {
             "strategy": "text",
+            "text": "Account is frozen",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "name": "Account is frozen",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "pattern": "Account is frozen",
+      "outcome": "ACCOUNT_FROZEN"
+    },
+    {
+      "afterStep": 1,
+      "locator": {
+        "candidates": [
+          {
+            "strategy": "text",
+            "text": "Estate hold",
+            "weak": false
+          }
+        ],
+        "fingerprint": {
+          "name": "Estate hold",
+          "candidateCount": 1,
+          "framePath": []
+        },
+        "framePath": []
+      },
+      "pattern": "Estate hold",
+      "outcome": "ESTATE_HOLD"
+    },
+    {
+      "afterStep": 1,
+      "locator": {
+        "candidates": [
+          {
+            "strategy": "text",
             "text": "Member ID must be",
             "weak": false
           }
@@ -218,6 +258,14 @@
     {
       "code": "PERMISSION_DENIED",
       "description": "Operator is not allowed to view this record"
+    },
+    {
+      "code": "ACCOUNT_FROZEN",
+      "description": "Fraud or operational freeze blocks servicing"
+    },
+    {
+      "code": "ESTATE_HOLD",
+      "description": "Deceased member — supervisor and letters required"
     },
     {
       "code": "VALIDATION_FAILED",

@@ -57,12 +57,23 @@ export const createLiveLlm = async (): Promise<DiscoverLlm> => {
     }),
   };
 
+  const zai = provider === "zai" || provider === "z.ai" || provider === "glm";
+
   return {
     async next({ goal, observation, history, params }): Promise<LlmTurn> {
       const result = await generateText({
         model,
         tools,
         prompt: buildDiscoverPrompt({ goal, observation, history, params }),
+        ...(zai
+          ? {
+              providerOptions: {
+                openai: {
+                  reasoningEffort: "low",
+                },
+              },
+            }
+          : {}),
       });
       const first = result.toolCalls[0];
       if (!first) return { text: result.text, toolCalls: [{ name: "finish", arguments: { why: result.text || "no tool" } }] };
@@ -97,14 +108,23 @@ const loadModel = async (provider: string, modelId: string) => {
       return createOpenAI({
         baseURL: process.env.VENICE_BASE_URL || "https://api.venice.ai/api/v1",
         apiKey: process.env.VENICE_API_KEY,
-      })(modelId || "llama-3.3-70b");
+      }).chat(modelId || "llama-3.3-70b");
     }
     case "openrouter": {
       const { createOpenAI } = await import("@ai-sdk/openai");
       return createOpenAI({
         baseURL: "https://openrouter.ai/api/v1",
         apiKey: process.env.OPENROUTER_API_KEY,
-      })(modelId || "openai/gpt-4.1-mini");
+      }).chat(modelId || "openai/gpt-4.1-mini");
+    }
+    case "zai":
+    case "z.ai":
+    case "glm": {
+      const { createOpenAI } = await import("@ai-sdk/openai");
+      return createOpenAI({
+        baseURL: (process.env.ZAI_BASE_URL || "https://api.z.ai/api/paas/v4").replace(/\/$/, ""),
+        apiKey: process.env.ZAI_API_KEY,
+      }).chat(modelId || "glm-5.3-flash");
     }
     default:
       throw new Error(`Unsupported LLM_PROVIDER=${provider}`);

@@ -33,7 +33,8 @@ export const buildDiscoverPrompt = (input: {
       ? `Declared parameters — use these exact names with paramRef. Never invent a name. Never put a raw PII value or the string "paramRef: …" into value.\n${declared}`
       : `Declared params should be referenced via paramRef, never raw values if they are PII.`,
     `After typing a parameter, click the submit control. Do not type the same field twice.`,
-    `If the last history line says the page was unchanged, take a different action.`,
+    `After a successful extract of the named output, call finish. Do not extract twice. Do not escalate if the goal text is visible.`,
+    `If the last history line says the page was unchanged, take a different action — unless the last action was extract, in which case call finish.`,
     `History:\n${input.history.join("\n") || "(none)"}`,
     `Current page:\n${input.observation}`,
     `Call exactly one tool.`,

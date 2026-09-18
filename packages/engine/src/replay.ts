@@ -62,6 +62,7 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
     }
   } else {
     policy.assertNavigate(await adapter.url());
+    await adapter.waitFor("load", undefined, 8000).catch(() => undefined);
   }
 
   const profile = resolveProfile(capability.appProfile) ?? mockBankProfile();
@@ -123,7 +124,11 @@ export const replay = async (input: ReplayInput): Promise<RunResult> => {
         }
       } catch (err) {
         const code = (err as { code?: string }).code;
-        if (code === "TARGET_NOT_FOUND" && step.action === "click" && i < capability.steps.length - 1) {
+        const staleClick =
+          step.action === "click" &&
+          i < capability.steps.length - 1 &&
+          (code === "TARGET_NOT_FOUND" || /Timeout/i.test(String(err)));
+        if (staleClick) {
           events.push({ at: now(), kind: "recovered", stepIndex: i, why: "click already satisfied by human" });
         } else {
           throw err;
